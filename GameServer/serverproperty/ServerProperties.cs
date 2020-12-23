@@ -1845,6 +1845,30 @@ namespace DOL.GS.ServerProperties
 
 		#region PVE / TOA
 		/// <summary>
+		/// Allow currency exchange?
+		/// </summary>
+		[ServerProperty("pve", "currency_exchange_allow", "Allow players to exchange aurulite/blood seals/glass/scales by giving them to a merchant who takes the desired currency, i.e. you can give glass to dragon merchants to get scales?", true)]
+		public static bool CURRENCY_EXCHANGE_ALLOW;
+
+		/// <summary>
+		/// Currency exchange values, i.e. you need 10 aurulite to get 1 dragon scale.
+		/// </summary>
+		[ServerProperty("pve", "currency_exchange_values", "Value of special currencies for currency conversion.", "atlanteanglass|1;aurulite|4;dragonscales|40;BloodSeal|1000")]
+		public static string CURRENCY_EXCHANGE_VALUES;
+
+		/// <summary>
+		/// Allow currencies to be exchanged for BPs?
+		/// </summary>
+		[ServerProperty("pve", "bp_exchange_allow", "Allow players to exchange special currencies for BPs by giving them to BP merchants?", true)]
+		public static bool BP_EXCHANGE_ALLOW;
+
+		/// <summary>
+		/// BP exchange values.  Each item grants x BPs.
+		/// </summary>
+		[ServerProperty("pve", "bp_exchange_values", "Value of special currencies in BPs.", "atlanteanglass|1;aurulite|4;dragonscales|40;BloodSeal|1000")]
+		public static string BP_EXCHANGE_VALUES;
+
+		/// <summary>
 		/// Initial percent chance of a mob BAFing for a single attacker
 		/// </summary>
 		[ServerProperty("pve", "baf_initial_chance", "Percent chance for a mob to bring a friend when attacked by a single attacker.  Each multiples of 100 guarantee an add, so a cumulative chance of 250% guarantees two adds with a 50% chance of a third.", 0)]
@@ -1984,25 +2008,43 @@ namespace DOL.GS.ServerProperties
 		[ServerProperty("pve", "lootgenerator_dreadedseals_named_chance", "Increase chance of Dreaded Seals Loot Generator drop for Named mobs. (count * lootgenerator_dreadedseals_named_chance)", 1.5)]
 		public static double LOOTGENERATOR_DREADEDSEALS_NAMED_CHANCE;
 
-        /// <summary>
-        /// PvE Experience Loss Start Level
-        /// </summary>
-        [ServerProperty("pve", "pve_exp_loss_level", "Which level should players killed in PvE start losing experience?", (byte)6)]
-        public static byte PVE_EXP_LOSS_LEVEL;
+		/// <summary>
+		/// Dreaded Seal multipliers by level
+		/// </summary>
+		[ServerProperty("pve", "dreadedseals_level_multiplier", "Level based multipliers for RPs and BPs awarded when turning in dreaded seals.", "21|2;26|3;31|5;36|30;41|70;46|150;50|300")]
+		public static string DREADEDSEALS_LEVEL_MULTIPLIER;
 
-        /// <summary>
-        /// PvE Conn Loss Start Level
-        /// </summary>
-        [ServerProperty("pve", "pve_con_loss_level", "Which level should players killed in PvE start losing constitution?", (byte)6)]
-        public static byte PVE_CON_LOSS_LEVEL;
+		/// <summary>
+		/// Dreaded Seal RP values before level multiplier and BP rate
+		/// </summary>
+		[ServerProperty("pve", "dreadedseals_bp_values", "BP values of dreaded seal types before level multiplier and BP rate is applied.", "glowing_dreaded_seal|3.334;sanguine_dreaded_seal|3.334;lambent_dreaded_seal|33.334;lambent_dreaded_seal2|33.334;fulgent_dreaded_seal|166.667;effulgent_dreaded_seal|833.334")]
+		public static string DREADEDSEALS_BP_VALUES;
 
-        #endregion
+		/// <summary>
+		/// Dreaded Seal BP values before level multiplier and RP rate
+		/// </summary>
+		[ServerProperty("pve", "dreadedseals_rp_values", "RP values of dreaded seal types before level multiplier and RP rate is applied.", "glowing_dreaded_seal|10;sanguine_dreaded_seal|10;lambent_dreaded_seal|100;lambent_dreaded_seal2|100;fulgent_dreaded_seal|500;effulgent_dreaded_seal|2500")]
+		public static string DREADEDSEALS_RP_VALUES;
 
-        #region HOUSING
-        /// <summary>
-        /// Maximum number of houses supported on this server.  Limits the size of the housing array used for updates
-        /// </summary>
-        [ServerProperty("housing", "max_num_houses", "Max number of houses supported on this server.", 5000)]
+		/// <summary>
+		/// PvE Experience Loss Start Level
+		/// </summary>
+		[ServerProperty("pve", "pve_exp_loss_level", "Which level should players killed in PvE start losing experience?", (byte)6)]
+		public static byte PVE_EXP_LOSS_LEVEL;
+
+		/// <summary>
+		/// PvE Conn Loss Start Level
+		/// </summary>
+		[ServerProperty("pve", "pve_con_loss_level", "Which level should players killed in PvE start losing constitution?", (byte)6)]
+		public static byte PVE_CON_LOSS_LEVEL;
+
+		#endregion
+
+		#region HOUSING
+		/// <summary>
+		/// Maximum number of houses supported on this server.  Limits the size of the housing array used for updates
+		/// </summary>
+		[ServerProperty("housing", "max_num_houses", "Max number of houses supported on this server.", 5000)]
 		public static int MAX_NUM_HOUSES;
 
 		/// <summary>
@@ -2209,20 +2251,20 @@ namespace DOL.GS.ServerProperties
 		[ServerProperty("classes", "allow_old_archery", "Should we allow archers to be able to use arrows from their quiver?", false)]
 		public static bool ALLOW_OLD_ARCHERY;
 
-        /// <summary>
-        /// Level at which res sickness starts to apply
-        /// </summary>
-        [ServerProperty("classes", "ress_sickness_level", "What level should ress sickness start to apply?", (byte)6)]
-        public static byte RESS_SICKNESS_LEVEL;
+		/// <summary>
+		/// Level at which res sickness starts to apply
+		/// </summary>
+		[ServerProperty("classes", "ress_sickness_level", "What level should ress sickness start to apply?", (byte)6)]
+		public static byte RESS_SICKNESS_LEVEL;
 
-        #endregion
+		#endregion
 
-        #region SPELLS
+		#region SPELLS
 
-        /// <summary>
-        /// Spells-related properties
-        /// </summary>
-        [ServerProperty("spells", "spell_interrupt_duration", "", 4500)]
+		/// <summary>
+		/// Spells-related properties
+		/// </summary>
+		[ServerProperty("spells", "spell_interrupt_duration", "", 4500)]
 		public static int SPELL_INTERRUPT_DURATION;
 
 		[ServerProperty("spells", "spell_interrupt_recast", "", 2000)]
