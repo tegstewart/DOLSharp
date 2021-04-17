@@ -1,4 +1,3 @@
-
 /*
  * DAWN OF LIGHT - The first free open source DAoC server emulator
  *
@@ -58,6 +57,21 @@ namespace DOL.GS.ServerProperties
 		// categories below, or extend the category list.
 
 		#region SYSTEM / DEBUG
+		/// <summary>
+		/// TempProperties to register
+		/// </summary>
+		[ServerProperty("system", "tempproperties_to_register", "Serialized list of tempprop string, separated by semi-colon for be registered when a player disconnect", "LastPotionItemUsedTick;SpellAvailableTime;ItemUseDelay;LastChargedItemUsedTick")]
+		public static string TEMPPROPERTIES_TO_REGISTER;
+		/// <summary>
+		/// Do we activate TempProperties manager Checkup on log in
+		/// </summary>
+		[ServerProperty("system", "activate_temp_properties_manager_checkup", "Do we activate TempProperties manager Checkup on log in?", true)]
+		public static bool ACTIVATE_TEMP_PROPERTIES_MANAGER_CHECKUP;
+		/// <summary>
+		/// Do we activate TempProperties manager Checkup debug
+		/// </summary>
+		[ServerProperty("log", "activate_temp_properties_manager_checkup_debug", "Do we activate TempProperties manager Checkup debug?", false)]
+		public static bool ACTIVATE_TEMP_PROPERTIES_MANAGER_CHECKUP_DEBUG;
 		/// <summary>
 		/// Enable Debug mode - used to alter some features during server startup to make debugging easier
 		/// Can be changed while server is running but may require restart to enable all debug features
@@ -170,7 +184,7 @@ namespace DOL.GS.ServerProperties
 		/// A serialised list of disabled expansion IDs
 		/// </summary>
 		[ServerProperty("system", "disabled_expansions", "Serialized list of disabled expansions IDs, expansion IDs are client type seperated by ;", "")]
-		public static string DISABLED_EXPANSIONS;
+		public static string DISABLED_EXPANSIONS = "";
 
 		/// <summary>
 		/// Server Language
@@ -595,7 +609,7 @@ namespace DOL.GS.ServerProperties
 		/// A serialised list of disabled RegionIDs
 		/// </summary>
 		[ServerProperty("world", "disabled_regions", "Serialized list of disabled region IDs, separated by semi-colon or a range with a dash (ie 1-5;7;9)", "")]
-		public static string DISABLED_REGIONS;
+		public static string DISABLED_REGIONS = "";
 
 		/// <summary>
 		/// Should the server disable the tutorial zone
@@ -612,7 +626,7 @@ namespace DOL.GS.ServerProperties
 		[ServerProperty("world", "world_day_increment", "Day Increment (0 to 512, default is 24).  Larger increments make shorter days.", (uint)24)]
 		public static uint WORLD_DAY_INCREMENT;
 
-		[ServerProperty("world", "world_npc_update_interval", "How often (milliseconds) will npc's broadcast updates to the clients. Minimum allowed = 1000 (1 second). 0 will disable this update.", (uint)10000)]
+		[ServerProperty("world", "world_npc_update_interval", "How often (milliseconds) will npc's broadcast updates to the clients. Minimum allowed = 1000 (1 second). 0 will disable this update.", (uint)8000)]
 		public static uint WORLD_NPC_UPDATE_INTERVAL;
 
 		[ServerProperty("world", "world_object_update_interval", "How often (milliseconds) will objects (static, housing, doors, broadcast updates to the clients. Minimum allowed = 10000 (10 seconds). 0 will disable this update.", (uint)30000)]
@@ -879,7 +893,7 @@ namespace DOL.GS.ServerProperties
 		/// The damage players do against monsters with spells
 		/// </summary>
 		[ServerProperty("rates", "pve_spell_damage", "The PvE Spell Damage Modifier - Edit this to change the amount of spell damage done when fighting mobs e.g 1.5 is 50% more damage 2.0 is twice the damage (100%) 0.5 is half the damage (50%)", 1.0)]
-		public static double PVE_SPELL_DAMAGE;
+		public static double PVE_SPELL_DAMAGE = 1.0;
 
 		/// <summary>
 		/// The percent per con difference (-1 = blue, 0 = yellow, 1 = OJ, 2 = red ...) subtracted to hitchance for spells in PVE.  0 is none, 5 is 5% per con, etc.  Default is 10%
@@ -1505,7 +1519,7 @@ namespace DOL.GS.ServerProperties
 		/// Load Keeps
 		/// </summary>
 		[ServerProperty("keeps", "load_keeps", "Load keeps", true)]
-		public static bool LOAD_KEEPS;
+		public static bool LOAD_KEEPS = true;
 
 		/// <summary>
 		/// The level keeps start at when not claimed - please note only levels 4 and 5 are supported correctly at this time
@@ -2365,6 +2379,22 @@ namespace DOL.GS.ServerProperties
 		#endregion
 
 		#region CRAFT / SALVAGE
+
+		/// <summary>
+		/// The crafting sellback price control at each craft (calculate a percent of raw materials used)
+		/// </summary>
+		[ServerProperty("craft", "crafting_adjust_product_price", "Change price to recommended value in database for product itemtemplate", false)]
+		public static bool CRAFTING_ADJUST_PRODUCT_PRICE;
+		/// <summary>
+		/// The crafting price control for secondary craft (trinketing) modifier
+		/// </summary>
+		[ServerProperty("craft", "crafting_secondary_sellback_percent", "How many percent of raw materials cost is SellBack values", 98.572)]
+		public static double CRAFTING_SECONDARYCRAFT_SELLBACK_PERCENT;
+		/// <summary>
+		/// The crafting price control for craft modifier
+		/// </summary>
+		[ServerProperty("craft", "crafting_sellback_percent", "How many percent of raw materials cost is SellBack values", 95)]
+		public static int CRAFTING_SELLBACK_PERCENT;
 		/// <summary>
 		/// The crafting speed modifier
 		/// </summary>

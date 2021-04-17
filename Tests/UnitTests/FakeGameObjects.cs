@@ -23,12 +23,14 @@ namespace DOL.UnitTests.Gameserver
         public FakePlayer() : base(null, null)
         {
             this.ObjectState = eObjectState.Active;
+            this.m_invulnerabilityTick = -1;
         }
 
         public override ICharacterClass CharacterClass { get { return fakeCharacterClass; } }
         public override byte Level { get; set; }
         public override Region CurrentRegion { get { return fakeRegion; } set { } }
         public override IPacketLib Out => new FakePacketLib();
+        public override GameClient Client => new GameClient(GameServer.Instance) { Account = new Account() };
         public override int GetBaseStat(eStat stat) => baseStat;
         public override int GetModifiedSpecLevel(string keyName) => modifiedSpecLevel;
 

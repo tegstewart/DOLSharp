@@ -170,7 +170,7 @@ namespace DOL.GS
 		/// <summary>
 		/// Returns the GameClient of this Player
 		/// </summary>
-		public GameClient Client
+		public virtual GameClient Client
 		{
 			get { return m_client; }
 		}
@@ -847,6 +847,7 @@ namespace DOL.GS
 			}
 		}
 
+		private static List<string> registered_temprop = null;
 		/// <summary>
 		/// Stop all timers, events and remove player from everywhere (group/guild/chat)
 		/// </summary>
@@ -938,6 +939,58 @@ namespace DOL.GS
 			{
 				log.ErrorFormat("Cannot cancel all effects - {0}", e);
 			}
+			#region TempPropertiesManager LookUp
+
+			if (ServerProperties.Properties.ACTIVATE_TEMP_PROPERTIES_MANAGER_CHECKUP)
+			{
+				try
+				{
+					foreach (string p in TempProperties.getAllProperties())
+					{
+
+						if (p == "")
+							continue;
+
+						int occurences = 0;
+
+						//List<string> registered_temprop = new List<string>;
+
+						registered_temprop = Util.SplitCSV(ServerProperties.Properties.TEMPPROPERTIES_TO_REGISTER).ToList();
+
+						occurences = (from j in registered_temprop
+									  where p.Contains(j)
+									  select j).Count();
+						if (occurences == 0)
+							continue;
+
+						object v = TempProperties.getProperty<object>(p, null);
+
+						if (v == null)
+							continue;
+
+						long longresult = 0;
+						if (long.TryParse(v.ToString(), out longresult))
+						{
+							if (ServerProperties.Properties.ACTIVATE_TEMP_PROPERTIES_MANAGER_CHECKUP_DEBUG)
+								log.Debug("On Disconnection found and was saved: " + p + " with value: " + v.ToString() + " for player: " + Name);
+
+							TempPropertiesManager.TempPropContainerList.Add(new TempPropertiesManager.TempPropContainer(DBCharacter.ObjectId, p, v.ToString()));
+							TempProperties.removeProperty(p);
+						}
+						else
+						{
+							if (ServerProperties.Properties.ACTIVATE_TEMP_PROPERTIES_MANAGER_CHECKUP_DEBUG)
+								log.Debug("On Disconnection found but was not saved (not a long value): " + p + " with value: " + v.ToString() + " for player: " + Name);
+						}
+					}
+				}
+				catch (Exception e)
+				{
+					log.Debug("Error in TempProproperties Manager when saving TempProp: " + e.ToString());
+				}
+			}
+
+			#endregion TempPropertiesManager LookUp
 		}
 
 		/// <summary>
@@ -11387,6 +11440,10 @@ namespace DOL.GS
 				//if (item.ExtraBonusType < 20)
 				//Out.SendMessage(string.Format(LanguageMgr.GetTranslation(Client.Account.Language, "GamePlayer.OnItemEquipped.Increased", ItemBonusName(item.ExtraBonusType))), eChatType.CT_Skill, eChatLoc.CL_SystemWindow);
 			}
+			//Check null on client.player bypass region change
+			if (Client.Account.PrivLevel == (uint)ePrivLevel.Player && Client.Player != null && Client.Player.ObjectState == eObjectState.Active)
+				if (item.SpellID > 0 || item.SpellID1 > 0)
+					TempProperties.setProperty("ITEMREUSEDELAY" + item.Id_nb, CurrentRegion.Time);
 
 			if (ObjectState == eObjectState.Active)
 			{
@@ -13939,39 +13996,16 @@ namespace DOL.GS
 		/// </summary>
 		public virtual void CraftItem(ushort itemID)
 		{
-			DBCraftedItem recipe = GameServer.Database.FindObjectByKey<DBCraftedItem>(itemID.ToString());
-			if (recipe != null)
+			var recipe = RecipeDB.FindBy(itemID);
+
+			AbstractCraftingSkill skill = CraftingMgr.getSkillbyEnum(recipe.RequiredCraftingSkill);
+			if (skill != null)
 			{
-				ItemTemplate itemToCraft = null;
-				itemToCraft = GameServer.Database.FindObjectByKey<ItemTemplate>(recipe.Id_nb);
-				IList<DBCraftedXItem> rawMaterials = GameServer.Database.SelectObjects<DBCraftedXItem>("`CraftedItemId_nb` = @CraftedItemId_nb", new QueryParameter("@CraftedItemId_nb", recipe.Id_nb));
-				if (rawMaterials.Count > 0)
-				{
-					if (itemToCraft != null)
-					{
-						AbstractCraftingSkill skill = CraftingMgr.getSkillbyEnum((eCraftingSkill)recipe.CraftingSkillType);
-						if (skill != null)
-						{
-							skill.CraftItem(this, recipe, itemToCraft, rawMaterials);
-						}
-						else
-						{
-							Out.SendMessage(LanguageMgr.GetTranslation(Client.Account.Language, "GamePlayer.CraftItem.DontHaveAbilityMake"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
-						}
-					}
-					else
-					{
-						Out.SendMessage("Crafted ItemTemplate (" + recipe.Id_nb + ") not implemented yet.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
-					}
-				}
-				else
-				{
-					Out.SendMessage("Craft recipe for (" + recipe.Id_nb + ") is missing raw materials!", eChatType.CT_System, eChatLoc.CL_SystemWindow);
-				}
+				skill.CraftItem(this, recipe);
 			}
 			else
 			{
-				Out.SendMessage("CraftedItemID: (" + itemID + ") not implemented yet.", eChatType.CT_System, eChatLoc.CL_SystemWindow);
+				Out.SendMessage(LanguageMgr.GetTranslation(Client.Account.Language, "GamePlayer.CraftItem.DontHaveAbilityMake"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
 			}
 		}
 
