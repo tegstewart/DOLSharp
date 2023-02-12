@@ -31,9 +31,9 @@ namespace DOL.Database
         private string autoTrainableSkills = "";
         private string eligibleRaces = "";
         private byte classType;
-        private string name;
+        private string name = "";
         private string femaleName = "";
-        private string professionTranslationID;
+        private string professionTranslationID = "";
         private byte primaryStat;
         private byte secondaryStat;
         private byte tertiaryStat;
