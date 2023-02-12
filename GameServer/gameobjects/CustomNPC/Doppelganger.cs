@@ -19,7 +19,6 @@
 using DOL.AI;
 using DOL.Database;
 using DOL.GS.Keeps;
-using DOL.GS.Realm;
 using DOL.GS.ServerProperties;
 using DOL.Language;
 using log4net;
@@ -145,10 +144,10 @@ namespace DOL.GS
                 Gender = eGender.Female;
 
             var characterClass = CharacterClass.None;
-            eRealm realm = (eRealm)Util.Random((int)eRealm._FirstPlayerRealm, (int)eRealm._LastPlayerRealm);
-            switch (realm)
+
+            switch (Util.Random(2))
             {
-                case eRealm.Albion: // Albion
+                case 0: // Albion
                     Name = $"Albion {LanguageMgr.GetTranslation(LanguageMgr.DefaultLanguage, "GamePlayer.RealmTitle.Invader")}";
 
                     switch (Util.Random(4))
@@ -176,7 +175,7 @@ namespace DOL.GS
                             break;
                     }
                     break;
-                case eRealm.Hibernia: // Hibernia
+                case 1: // Hibernia
                     Name = $"Hibernia {LanguageMgr.GetTranslation(LanguageMgr.DefaultLanguage, "GamePlayer.RealmTitle.Invader")}";
 
                     switch (Util.Random(4))
@@ -204,7 +203,7 @@ namespace DOL.GS
                             break;
                     }
                     break;
-                case eRealm.Midgard: // Midgard
+                case 2: // Midgard
                     Name = $"Midgard {LanguageMgr.GetTranslation(LanguageMgr.DefaultLanguage, "GamePlayer.RealmTitle.Invader")}";
 
                     switch (Util.Random(4))
@@ -235,24 +234,8 @@ namespace DOL.GS
             }
 
             var possibleRaces = characterClass.EligibleRaces;
-            if (possibleRaces.Count > 0)
-            {
-                var indexPick = Util.Random(0, possibleRaces.Count - 1);
-                Model = (ushort)possibleRaces[indexPick].GetModel(Gender);
-            }
-            else
-                switch (realm)
-                {
-                    case eRealm.Albion:
-                        Model = (ushort)PlayerRace.Briton.GetModel(Gender);
-                        break;
-					case eRealm.Hibernia:
-						Model = (ushort)PlayerRace.Celt.GetModel(Gender);
-						break;
-					case eRealm.Midgard:
-						Model = (ushort)PlayerRace.Norseman.GetModel(Gender);
-						break;
-				}
+            var indexPick = Util.Random(0, possibleRaces.Count - 1);
+            Model = (ushort)possibleRaces[indexPick].GetModel(Gender);
 
             bool distance = Inventory.GetItem(eInventorySlot.DistanceWeapon) != null;
             bool standard = Inventory.GetItem(eInventorySlot.RightHandWeapon) != null;
