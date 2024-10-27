@@ -56,8 +56,8 @@ namespace DOL.Integration.Server
 			{
 				KillTask task =(KillTask) player.Task;
 
-				Assert.IsNotNull(task);
-				Assert.IsTrue(task.TaskActive);
+				Assert.That(task, Is.Not.Null);
+				Assert.That(task.TaskActive, Is.True);
 
 				Console.WriteLine("Mob:"+ task.MobName);
 				Console.WriteLine("Item:"+ task.ItemName);
@@ -69,11 +69,8 @@ namespace DOL.Integration.Server
 
 				GameNPC mob = new GameNPC();
 				mob.Name = task.MobName;
-				mob.X = player.X;
-				mob.Y = player.Y;
-				mob.Z = player.Z;
+				mob.Position = player.Position;
 				mob.Level = player.Level;
-				mob.CurrentRegionID = player.CurrentRegionID;
 				mob.AddToWorld();
 				
 				// First we kill mob

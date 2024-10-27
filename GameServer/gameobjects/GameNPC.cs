@@ -26,19 +26,17 @@ using DOL.AI;
 using DOL.AI.Brain;
 using DOL.Database;
 using DOL.Events;
-using DOL.GS;
 using DOL.GS.Effects;
 using DOL.GS.Housing;
-using DOL.GS.Keeps;
 using DOL.GS.Movement;
 using DOL.GS.PacketHandler;
 using DOL.GS.Quests;
 using DOL.GS.Spells;
 using DOL.GS.Styles;
-using DOL.GS.Utils;
 using DOL.Language;
 using DOL.GS.ServerProperties;
 using DOL.GS.Finance;
+using DOL.GS.Geometry;
 
 namespace DOL.GS
 {
@@ -175,20 +173,14 @@ namespace DOL.GS
 			}
 		}
 
-		/// <summary>
-		/// Gets or sets the heading of this NPC
-		/// </summary>
-		public override ushort Heading
+        public override Angle Orientation
 		{
-			get { return base.Heading; }
+			get { return base.Orientation; }
 			set
 			{
 				if (IsTurningDisabled)
 					return;
-				ushort oldHeading = base.Heading;
-				base.Heading = value;
-				if (base.Heading != oldHeading)
-					BroadcastUpdate();
+				base.Orientation = value;
 			}
 		}
 
@@ -701,14 +693,6 @@ namespace DOL.GS
 		/// Holds various flags of this npc
 		/// </summary>
 		protected eFlags m_flags;
-		/// <summary>
-		/// Spawn point
-		/// </summary>
-		protected Point3D m_spawnPoint;
-		/// <summary>
-		/// Spawn Heading
-		/// </summary>
-		protected ushort m_spawnHeading;
 
 
 		/// <summary>
@@ -722,10 +706,6 @@ namespace DOL.GS
 			set { m_packageID = value; }
 		}
 
-		/// <summary>
-		/// The last time this NPC sent the 0x09 update packet
-		/// </summary>
-		protected volatile uint m_lastUpdateTickCount = uint.MinValue;
 		/// <summary>
 		/// The last time this NPC was actually updated to at least one player
 		/// </summary>
@@ -757,34 +737,16 @@ namespace DOL.GS
 			}
 		}
 
-		public bool IsGhost
-		{ get => m_flags.HasFlag(eFlags.GHOST); }
-
-		public override bool IsStealthed
-		{ get => m_flags.HasFlag(eFlags.STEALTH); }
-
-		public bool IsDontShowName
-		{ get => m_flags.HasFlag(eFlags.DONTSHOWNAME); }
-
-		public bool IsCannotTarget
-		{ get => m_flags.HasFlag(eFlags.CANTTARGET); }
-
-		public bool IsPeaceful
-		{ get => m_flags.HasFlag(eFlags.PEACE); }
-
-		public bool IsFlying
-		{ get => m_flags.HasFlag(eFlags.FLYING); }
-
-		public bool IsTorchLit
-		{ get => m_flags.HasFlag(eFlags.TORCH); }
-
-		public bool IsStatue
-		{ get => m_flags.HasFlag(eFlags.STATUE); }
-
-		public override bool IsUnderwater
-		{
-			get { return m_flags.HasFlag(eFlags.SWIMMING) || base.IsUnderwater; }
-		}
+        public bool IsGhost => Flags.HasFlag(eFlags.GHOST);
+        public override bool IsStealthed => Flags.HasFlag(eFlags.STEALTH);
+        public bool IsDontShowName => Flags.HasFlag(eFlags.DONTSHOWNAME);
+        public bool IsCannotTarget => Flags.HasFlag(eFlags.CANTTARGET);
+        public bool IsPeaceful => Flags.HasFlag(eFlags.PEACE);
+        public bool IsFlying => Flags.HasFlag(eFlags.FLYING);
+        public bool IsTorchLit => Flags.HasFlag(eFlags.TORCH);
+        public bool IsStatue => Flags.HasFlag(eFlags.STATUE);
+        public override bool IsUnderwater
+            => Flags.HasFlag(eFlags.SWIMMING) || base.IsUnderwater;
 
 		/// <summary>
 		/// Set the NPC to stealth or unstealth
@@ -814,68 +776,35 @@ namespace DOL.GS
 			get { return (uint)Environment.TickCount - m_lastVisibleToPlayerTick < 60000; }
 		}
 
-		/// <summary>
-		/// Gets or sets the spawnposition of this npc
-		/// </summary>
-		public virtual Point3D SpawnPoint
-		{
-			get { return m_spawnPoint; }
-			set { m_spawnPoint = value; }
-		}
+        public Position SpawnPosition { get; set; } = Position.Nowhere;
 
-		/// <summary>
-		/// Gets or sets the spawnposition of this npc
-		/// </summary>
-		[Obsolete("Use GameNPC.SpawnPoint")]
-		public virtual int SpawnX
-		{
-			get { return m_spawnPoint.X; }
-			set { m_spawnPoint.X = value; }
-		}
-		/// <summary>
-		/// Gets or sets the spawnposition of this npc
-		/// </summary>
-		[Obsolete("Use GameNPC.SpawnPoint")]
-		public virtual int SpawnY
-		{
-			get { return m_spawnPoint.Y; }
-			set { m_spawnPoint.Y = value; }
-		}
-		/// <summary>
-		/// Gets or sets the spawnposition of this npc
-		/// </summary>
-		[Obsolete("Use GameNPC.SpawnPoint")]
-		public virtual int SpawnZ
-		{
-			get { return m_spawnPoint.Z; }
-			set { m_spawnPoint.Z = value; }
-		}
+        [Obsolete("Use SpawnPosition instead!")]
+        public Point3D SpawnPoint
+        {
+            get => SpawnPosition.Coordinate.ToPoint3D();
+            set => SpawnPosition = Position.Create(CurrentRegionID, value.ToCoordinate(), SpawnPosition.Orientation.InHeading);
+        }
 
-		/// <summary>
-		/// Gets or sets the spawnheading of this npc
-		/// </summary>
-		public virtual ushort SpawnHeading
-		{
-			get { return m_spawnHeading; }
-			set { m_spawnHeading = value; }
-		}
+        [Obsolete("Use SpawnPosition.Heading instead!")]
+        public ushort SpawnHeading
+        {
+            get => SpawnPosition.Orientation.InHeading;
+            private set => SpawnPosition = Position.With(Angle.Heading(value));
+        }
 
-		/// <summary>
-		/// Gets or sets the current speed of the npc
-		/// </summary>
-		public override short CurrentSpeed
-		{
-			set
-			{
-				SaveCurrentPosition();
+        public short ZSpeedFactor
+            => (short)((Motion.Destination.Z - Motion.Start.Z) / Motion.FullDistance);
 
-				if (base.CurrentSpeed != value)
-				{
-					base.CurrentSpeed = value;
-					BroadcastUpdate();
-				}
-			}
-		}
+        protected override Motion Motion
+        {
+            set
+            {
+                base.Motion = value;
+                BroadcastUpdate();
+            }
+        }
+
+        public Coordinate Destination => Motion.Destination;
 
 		/// <summary>
 		/// Stores the currentwaypoint that npc has to wander to
@@ -894,91 +823,6 @@ namespace DOL.GS
 		/// Stores the speed for traveling on path
 		/// </summary>
 		protected short m_pathingNormalSpeed;
-
-		/// <summary>
-		/// Gets the current X of this living. Don't modify this property
-		/// to try to change position of the mob while active. Use the
-		/// MoveTo function instead
-		/// </summary>
-		public override int X
-		{
-			get
-			{
-				if (!IsMoving)
-					return base.X;
-
-				if (TargetPosition.X != 0 || TargetPosition.Y != 0 || TargetPosition.Z != 0)
-				{
-					long expectedDistance = FastMath.Abs((long)TargetPosition.X - m_x);
-
-					if (expectedDistance == 0)
-						return TargetPosition.X;
-
-					long actualDistance = FastMath.Abs((long)(MovementElapsedTicks * TickSpeedX));
-
-					if (expectedDistance - actualDistance < 0)
-						return TargetPosition.X;
-				}
-
-				return base.X;
-			}
-		}
-
-		/// <summary>
-		/// Gets the current Y of this NPC. Don't modify this property
-		/// to try to change position of the mob while active. Use the
-		/// MoveTo function instead
-		/// </summary>
-		public override int Y
-		{
-			get
-			{
-				if (!IsMoving)
-					return base.Y;
-
-				if (TargetPosition.X != 0 || TargetPosition.Y != 0 || TargetPosition.Z != 0)
-				{
-					long expectedDistance = FastMath.Abs((long)TargetPosition.Y - m_y);
-
-					if (expectedDistance == 0)
-						return TargetPosition.Y;
-
-					long actualDistance = FastMath.Abs((long)(MovementElapsedTicks * TickSpeedY));
-
-					if (expectedDistance - actualDistance < 0)
-						return TargetPosition.Y;
-				}
-				return base.Y;
-			}
-		}
-
-		/// <summary>
-		/// Gets the current Z of this NPC. Don't modify this property
-		/// to try to change position of the mob while active. Use the
-		/// MoveTo function instead
-		/// </summary>
-		public override int Z
-		{
-			get
-			{
-				if (!IsMoving)
-					return base.Z;
-
-				if (TargetPosition.X != 0 || TargetPosition.Y != 0 || TargetPosition.Z != 0)
-				{
-					long expectedDistance = FastMath.Abs((long)TargetPosition.Z - m_z);
-
-					if (expectedDistance == 0)
-						return TargetPosition.Z;
-
-					long actualDistance = FastMath.Abs((long)(MovementElapsedTicks * TickSpeedZ));
-
-					if (expectedDistance - actualDistance < 0)
-						return TargetPosition.Z;
-				}
-				return base.Z;
-			}
-		}
 
 		protected int m_maxdistance;
 		/// <summary>
@@ -1027,7 +871,7 @@ namespace DOL.GS
 			{
 				if (TetherRange > 0)
 				{
-					if (this.IsWithinRadius(this.SpawnPoint, TetherRange))
+					if (Coordinate.DistanceTo(SpawnPosition) <= TetherRange)
 						return false;
 					else
 						return true;
@@ -1104,28 +948,6 @@ namespace DOL.GS
 			set { m_pathID = value; }
 		}
 
-		private IPoint3D m_targetPosition = new Point3D(0, 0, 0);
-
-		/// <summary>
-		/// The target position.
-		/// </summary>
-		public virtual IPoint3D TargetPosition
-		{
-			get
-			{
-				return m_targetPosition;
-			}
-
-			protected set
-			{
-				if (value != m_targetPosition)
-				{
-					SaveCurrentPosition();
-					m_targetPosition = value;
-				}
-			}
-		}
-
 		/// <summary>
 		/// The target object.
 		/// </summary>
@@ -1148,102 +970,39 @@ namespace DOL.GS
 			}
 		}
 
-		/// <summary>
-		/// Updates the tick speed for this living.
-		/// </summary>
-		protected override void UpdateTickSpeed()
-		{
-			if (!IsMoving)
-			{
-				SetTickSpeed(0, 0, 0);
-				return;
-			}
+        public bool IsAtTargetLocation
+            => Motion.Destination.Equals(Coordinate);
 
-			if (TargetPosition.X != 0 || TargetPosition.Y != 0 || TargetPosition.Z != 0)
-			{
-				double dist = this.GetDistanceTo(new Point3D(TargetPosition.X, TargetPosition.Y, TargetPosition.Z));
+        public override void TurnTo(Coordinate coordinate, bool sendUpdate = true)
+        {
+            if (IsStunned || IsMezzed) return;
 
-				if (dist <= 0)
-				{
-					SetTickSpeed(0, 0, 0);
-					return;
-				}
+            Notify(GameNPCEvent.TurnTo, this, new TurnToEventArgs(coordinate.X, coordinate.Y));
 
-				double dx = (double)(TargetPosition.X - m_x) / dist;
-				double dy = (double)(TargetPosition.Y - m_y) / dist;
-				double dz = (double)(TargetPosition.Z - m_z) / dist;
+            if (sendUpdate) Orientation = Coordinate.GetOrientationTo(coordinate);
+            else base.Orientation = Coordinate.GetOrientationTo(coordinate);
+        }
 
-				SetTickSpeed(dx, dy, dz, CurrentSpeed);
-				return;
-			}
+        [Obsolete("Use TurnTo(Coordinate[,bool]) instead.")]
+        public virtual void TurnTo(int tx, int ty, bool sendUpdate = true)
+            => TurnTo(Coordinate.Create(x: tx, y: ty ), sendUpdate);
 
-			base.UpdateTickSpeed();
-		}
+        [Obsolete("Use .TurnTo(Angle[,bool]) instead!")]
+        public virtual void TurnTo(ushort heading, bool sendUpdate = true)
+            => TurnTo(Angle.Heading(heading), sendUpdate);
 
-		/// <summary>
-		/// True if the mob is at its target position, else false.
-		/// </summary>
-		public bool IsAtTargetPosition
-		{
-			get
-			{
-				return (X == TargetPosition.X && Y == TargetPosition.Y && Z == TargetPosition.Z);
-			}
-		}
+        public virtual void TurnTo(Angle newOrientation, bool sendUpdate = true)
+        {
+            if (IsStunned || IsMezzed) return;
 
-		/// <summary>
-		/// Turns the npc towards a specific spot
-		/// </summary>
-		/// <param name="tx">Target X</param>
-		/// <param name="ty">Target Y</param>
-		public virtual void TurnTo(int tx, int ty)
-		{
-			TurnTo(tx, ty, true);
-		}
+            Notify(GameNPCEvent.TurnToHeading, this, new TurnToHeadingEventArgs(newOrientation.InHeading));
 
-		/// <summary>
-		/// Turns the npc towards a specific spot
-		/// optionally sends update to client
-		/// </summary>
-		/// <param name="tx">Target X</param>
-		/// <param name="ty">Target Y</param>
-		public virtual void TurnTo(int tx, int ty, bool sendUpdate)
-		{
-			if (IsStunned || IsMezzed) return;
-
-			Notify(GameNPCEvent.TurnTo, this, new TurnToEventArgs(tx, ty));
-
-			if (sendUpdate)
-				Heading = GetHeading(new Point2D(tx, ty));
-			else
-				base.Heading = GetHeading(new Point2D(tx, ty));
-		}
-
-		/// <summary>
-		/// Turns the npc towards a specific heading
-		/// </summary>
-		/// <param name="newHeading">the new heading</param>
-		public virtual void TurnTo(ushort heading)
-		{
-			TurnTo(heading, true);
-		}
-
-		/// <summary>
-		/// Turns the npc towards a specific heading
-		/// optionally sends update to client
-		/// </summary>
-		/// <param name="newHeading">the new heading</param>
-		public virtual void TurnTo(ushort heading, bool sendUpdate)
-		{
-			if (IsStunned || IsMezzed) return;
-
-			Notify(GameNPCEvent.TurnToHeading, this, new TurnToHeadingEventArgs(heading));
-
-			if (sendUpdate)
-				if (Heading != heading) Heading = heading;
-				else
-				if (base.Heading != heading) base.Heading = heading;
-		}
+            if (sendUpdate)
+            {
+                if (Orientation != newOrientation) Orientation = newOrientation;
+                else if (base.Orientation != newOrientation) base.Orientation = newOrientation;
+            }
+        }
 
 		/// <summary>
 		/// Turns the NPC towards a specific gameObject
@@ -1266,7 +1025,7 @@ namespace DOL.GS
 			if (target == null || target.CurrentRegion != CurrentRegion)
 				return;
 
-			TurnTo(target.X, target.Y, sendUpdate);
+			TurnTo(target.Coordinate, sendUpdate);
 		}
 
 		/// <summary>
@@ -1305,15 +1064,8 @@ namespace DOL.GS
 		/// </summary>
 		protected class RestoreHeadingAction : RegionAction
 		{
-			/// <summary>
-			/// The NPCs old heading
-			/// </summary>
-			protected readonly ushort m_oldHeading;
-
-			/// <summary>
-			/// The NPCs old position
-			/// </summary>
-			protected readonly Point3D m_oldPosition;
+            private readonly Angle oldOrientation;
+			protected readonly Coordinate m_oldPosition;
 
 			/// <summary>
 			/// Creates a new TurnBackAction
@@ -1322,13 +1074,10 @@ namespace DOL.GS
 			public RestoreHeadingAction(GameNPC actionSource)
 				: base(actionSource)
 			{
-				m_oldHeading = actionSource.Heading;
-				m_oldPosition = new Point3D(actionSource);
+                oldOrientation = actionSource.Orientation;
+				m_oldPosition = actionSource.Coordinate;
 			}
 
-			/// <summary>
-			/// Called on every timer tick
-			/// </summary>
 			protected override void OnTick()
 			{
 				GameNPC npc = (GameNPC)m_actionSource;
@@ -1340,18 +1089,10 @@ namespace DOL.GS
 				if (npc.AttackState) return;
 				if (npc.IsMoving) return;
 				if (npc.Equals(m_oldPosition)) return;
-				if (npc.Heading == m_oldHeading) return; // already set? oO
+				if (npc.Orientation == oldOrientation) return; // already set? oO
 
-				npc.TurnTo(m_oldHeading);
+				npc.TurnTo(oldOrientation);
 			}
-		}
-
-		/// <summary>
-		/// Gets the last time this mob was updated
-		/// </summary>
-		public uint LastUpdateTickCount
-		{
-			get { return m_lastUpdateTickCount; }
 		}
 
 		/// <summary>
@@ -1367,13 +1108,16 @@ namespace DOL.GS
 		/// </summary>
 		protected class ArriveAtTargetAction : RegionAction
 		{
+			private Action<GameNPC> m_goToNodeCallback;
+
 			/// <summary>
 			/// Constructs a new ArriveAtTargetAction
 			/// </summary>
 			/// <param name="actionSource">The action source</param>
-			public ArriveAtTargetAction(GameNPC actionSource)
+			public ArriveAtTargetAction(GameNPC actionSource, Action<GameNPC> goToNodeCallback = null)
 				: base(actionSource)
 			{
+				m_goToNodeCallback = goToNodeCallback;
 			}
 
 			/// <summary>
@@ -1384,6 +1128,11 @@ namespace DOL.GS
 			protected override void OnTick()
 			{
 				GameNPC npc = (GameNPC)m_actionSource;
+				if (m_goToNodeCallback != null)
+				{
+					m_goToNodeCallback(npc);
+					return;
+				}
 
 				bool arriveAtSpawnPoint = npc.IsReturningToSpawnPoint;
 
@@ -1404,56 +1153,98 @@ namespace DOL.GS
 			}
 		}
 
-		/// <summary>
-		/// Ticks required to arrive at a given spot.
-		/// </summary>
-		/// <param name="target"></param>
-		/// <param name="speed"></param>
-		/// <returns></returns>
+		[Obsolete("This is going to be removed.")]
 		public virtual int GetTicksToArriveAt(IPoint3D target, int speed)
 		{
-			return GetDistanceTo(target) * 1000 / speed;
+			return (int)Coordinate.DistanceTo(target.ToCoordinate()) * 1000 / speed;
 		}
 
-		/// <summary>
-		/// Make the current (calculated) position permanent.
-		/// </summary>
-		private void SaveCurrentPosition()
+        /// <summary>
+        /// Make the current (calculated) position permanent.
+        /// </summary>
+        private void SaveCurrentPosition()
+            => Position = Position;
+
+        [Obsolete("Use .SaveCurrentPosition() instead!")]
+        private void SavePosition(IPoint3D target)
+            => Position = Position.Create(CurrentRegionID, target.ToCoordinate(), Orientation);
+
+        [Obsolete("Use WalkTo(Coordinate, short) instead!")]
+        public virtual void WalkTo(int targetX, int targetY, int targetZ, short speed)
+            => WalkTo(Coordinate.Create(x: targetX, y: targetY, z: targetZ ), speed);
+
+        [Obsolete("Use WalkTo(Coordinate, short) instead!")]
+        public virtual void WalkTo(IPoint3D target, short speed)
+            => WalkTo(target.ToCoordinate(), speed);
+
+        public virtual void WalkTo(Coordinate destination, short speed)
 		{
-			SavePosition(this);
+			if (IsTurningDisabled) return;
+
+			if (speed > MaxSpeed) speed = MaxSpeed;
+
+			if (speed <= 0) return;
+
+            Motion = Geometry.Motion.Create(Position, destination, speed);
+
+			if ((int)Motion.RemainingDistance == 0)
+			{
+				Notify(GameNPCEvent.ArriveAtTarget, this);
+				return;
+			}
+
+			CancelWalkToTimer();
+
+            var notifyDestination = TargetObject != null ? TargetObject.Coordinate : Coordinate.Nowhere;
+			Notify(GameNPCEvent.WalkTo, this, new WalkToEventArgs(notifyDestination, speed));
+
+			StartArriveAtTargetAction((int)(Motion.RemainingDistance * 1000 / speed));
 		}
 
-		/// <summary>
-		/// Make the target position permanent.
-		/// </summary>
-		private void SavePosition(IPoint3D target)
-		{
-			X = target.X;
-			Y = target.Y;
-			Z = target.Z;
+		public PathCalculator PathCalculator { get; protected set; }
 
-			MovementStartTick = Environment.TickCount;
+        public void PathTo(Coordinate destination, short speed)
+        {
+			if (!PathCalculator.ShouldPath(this, destination))
+			{
+				WalkTo(destination, speed);
+				return;
+			}
+
+			// Initialize pathing if possible and required
+			if (PathCalculator == null)
+			{
+				if (!PathCalculator.IsSupported(this))
+				{
+					WalkTo(destination, speed);
+					return;
+				}
+				// TODO: Only make this check once on spawn since it internally calls .CurrentZone + hashtable lookup?
+				PathCalculator = new PathCalculator(this);
+			}
+
+			// Pick the next pathing node, and walk towards it
+            var nextMotionTarget = Coordinate.Nowhere;
+
+			if (PathCalculator != null)
+			{
+                nextMotionTarget = PathCalculator.CalculateNextLineSegment(destination);
+			}
+
+			// Directly walk towards the target (or call the customly provided action)
+			if (nextMotionTarget.Equals(Coordinate.Nowhere))
+			{
+				WalkTo(destination, speed);
+				return;
+			}
+
+			// Do the actual pathing bit: Walk towards the next pathing node
+			WalkTo(nextMotionTarget, speed, npc => npc.PathTo(destination, speed));
+			return;
 		}
 
-		/// <summary>
-		/// Walk to a certain spot at a given speed.
-		/// </summary>
-		/// <param name="tx"></param>
-		/// <param name="ty"></param>
-		/// <param name="tz"></param>
-		/// <param name="speed"></param>
-		public virtual void WalkTo(int targetX, int targetY, int targetZ, short speed)
-		{
-			WalkTo(new Point3D(targetX, targetY, targetZ), speed);
-		}
-
-		/// <summary>
-		/// Walk to a certain spot at a given speed.
-		/// </summary>
-		/// <param name="p"></param>
-		/// <param name="speed"></param>
-		public virtual void WalkTo(IPoint3D target, short speed)
-		{
+        private void WalkTo(Coordinate destination, short speed, Action<GameNPC> goToNextNodeCallback)
+        {
 			if (IsTurningDisabled)
 				return;
 
@@ -1463,31 +1254,23 @@ namespace DOL.GS
 			if (speed <= 0)
 				return;
 
-			TargetPosition = target; // this also saves the current position
+            Motion = Geometry.Motion.Create(Position, destination,speed);
 
-			if (IsWithinRadius(TargetPosition, CONST_WALKTOTOLERANCE))
+			if ((int)Motion.RemainingDistance == 0)
 			{
-				// No need to start walking.
-
-				Notify(GameNPCEvent.ArriveAtTarget, this);
+				goToNextNodeCallback(this);
 				return;
 			}
 
 			CancelWalkToTimer();
 
-			m_Heading = GetHeading(TargetPosition);
-			m_currentSpeed = speed;
-
-			UpdateTickSpeed();
-			Notify(GameNPCEvent.WalkTo, this, new WalkToEventArgs(TargetPosition, speed));
-
-			StartArriveAtTargetAction(GetTicksToArriveAt(TargetPosition, speed));
-			BroadcastUpdate();
+			StartArriveAtTargetAction((int)(Motion.RemainingDistance * 1000 / speed), goToNextNodeCallback);
 		}
 
-		private void StartArriveAtTargetAction(int requiredTicks)
+
+		private void StartArriveAtTargetAction(int requiredTicks, Action<GameNPC> goToNextNodeCallback = null)
 		{
-			m_arriveAtTargetAction = new ArriveAtTargetAction(this);
+			m_arriveAtTargetAction = new ArriveAtTargetAction(this, goToNextNodeCallback);
 			m_arriveAtTargetAction.Start((requiredTicks > 1) ? requiredTicks : 1);
 		}
 
@@ -1528,28 +1311,16 @@ namespace DOL.GS
 
 			IsReturningHome = true;
 			IsReturningToSpawnPoint = true;
-			WalkTo(SpawnPoint, speed);
+			PathTo(SpawnPosition.Coordinate, speed);
 		}
 
-		/// <summary>
-		/// This function is used to start the mob walking. It will
-		/// walk in the heading direction until the StopMovement function
-		/// is called
-		/// </summary>
-		/// <param name="speed">walk speed</param>
+		[Obsolete("This is going to be removed.")]
 		public virtual void Walk(short speed)
 		{
 			Notify(GameNPCEvent.Walk, this, new WalkEventArgs(speed));
 
 			CancelWalkToTimer();
-			SaveCurrentPosition();
-			TargetPosition.Clear();
-
-			m_currentSpeed = speed;
-
-			MovementStartTick = Environment.TickCount;
-			UpdateTickSpeed();
-			BroadcastUpdate();
+            Motion = Geometry.Motion.Create(Position, Coordinate.Nowhere, speed);
 		}
 
 		/// <summary>
@@ -1571,22 +1342,14 @@ namespace DOL.GS
 				CurrentSpeed = 0;
 		}
 
-		/// <summary>
-		/// Stops the movement of the mob and forcibly moves it to the
-		/// given target position.
-		/// </summary>
+		[Obsolete("This is going to be removed.")]
 		public virtual void StopMovingAt(IPoint3D target)
 		{
 			CancelWalkToSpawn();
 
-			if (IsMoving)
-			{
-				m_currentSpeed = 0;
-				UpdateTickSpeed();
-			}
+			if (IsMoving) CurrentSpeed = 0;
 
 			SavePosition(target);
-			BroadcastUpdate();
 		}
 
 		public const int STICKMINIMUMRANGE = 100;
@@ -1646,8 +1409,8 @@ namespace DOL.GS
 			else if (m_attackers.Count == 0 && this.Spells.Count > 0 && this.TargetObject != null && GameServer.ServerRules.IsAllowedToAttack(this, (this.TargetObject as GameLiving), true))
 			{
 				if (TargetObject.Realm == 0 || Realm == 0)
-					m_lastAttackTickPvE = m_CurrentRegion.Time;
-				else m_lastAttackTickPvP = m_CurrentRegion.Time;
+					m_lastAttackTickPvE = CurrentRegion.Time;
+				else m_lastAttackTickPvP = CurrentRegion.Time;
 				if (this.CurrentRegion.Time - LastAttackedByEnemyTick > 10 * 1000)
 				{
 					// Aredhel: Erm, checking for spells in a follow method, what did we create
@@ -1692,13 +1455,8 @@ namespace DOL.GS
 			}
 
 			//Calculate the difference between our position and the players position
-			float diffx = (long)followTarget.X - X;
-			float diffy = (long)followTarget.Y - Y;
-			float diffz = (long)followTarget.Z - Z;
-
-			//SH: Removed Z checks when one of the two Z values is zero(on ground)
-			//Tolakram: a Z of 0 does not indicate on the ground.  Z varies based on terrain  Removed 0 Z check
-			float distance = (float)Math.Sqrt(diffx * diffx + diffy * diffy + diffz * diffz);
+            var diffVec = followTarget.Coordinate - Coordinate;
+			var distance = diffVec.Length;
 
 			//if distance is greater then the max follow distance, stop following and return home
 			if ((int)distance > m_followMaxDist)
@@ -1708,7 +1466,6 @@ namespace DOL.GS
 				this.WalkToSpawn();
 				return 0;
 			}
-			int newX, newY, newZ;
 
 			if (this.Brain is StandardMobBrain)
 			{
@@ -1734,12 +1491,10 @@ namespace DOL.GS
 				}
 
 				//If we're part of a formation, we can get out early.
-				newX = followTarget.X;
-				newY = followTarget.Y;
-				newZ = followTarget.Z;
-				if (brain.CheckFormation(ref newX, ref newY, ref newZ))
+                var formationCoordinate = brain.GetFormationCoordinate(followTarget.Coordinate);
+				if (formationCoordinate != Coordinate.Nowhere)
 				{
-					WalkTo(newX, newY, (ushort)newZ, MaxSpeed);
+                    WalkTo(formationCoordinate, MaxSpeed);
 					return ServerProperties.Properties.GAMENPC_FOLLOWCHECK_TIME;
 				}
 			}
@@ -1765,22 +1520,22 @@ namespace DOL.GS
 			}
 
 			// follow on distance
-			diffx = (diffx / distance) * m_followMinDist;
-			diffy = (diffy / distance) * m_followMinDist;
-			diffz = (diffz / distance) * m_followMinDist;
+            var distanceFactor = m_followMinDist / distance;
+            var followOffset = diffVec * distanceFactor;
 
 			//Subtract the offset from the target's position to get
 			//our target position
-			newX = (int)(followTarget.X - diffx);
-			newY = (int)(followTarget.Y - diffy);
-			newZ = (int)(followTarget.Z - diffz);
 
-            if (InCombat || Brain is BomberBrain)
-                WalkTo(newX, newY, (ushort)newZ, MaxSpeed);
-            else if (MaxSpeed < GetDistance(new Point2D(newX, newY)))
-                WalkTo(newX, newY, (ushort)newZ, (short)Math.Min(MaxSpeed, followLiving.CurrentSpeed + 50));
-            else
-                WalkTo(newX, newY, (ushort)newZ, (short)GetDistance(new Point2D(newX, newY)));
+            var destination = followTarget.Coordinate - followOffset;
+            if (InCombat || Brain is BomberBrain) 
+            {
+                PathTo(destination, MaxSpeed);
+            }
+            else 
+            {
+                var speed = (short)Coordinate.DistanceTo(destination, ignoreZ: true);
+                PathTo(destination, speed);
+            }
             return ServerProperties.Properties.GAMENPC_FOLLOWCHECK_TIME;
 		}
 
@@ -1857,7 +1612,7 @@ namespace DOL.GS
 
 			PathingNormalSpeed = speed;
 
-			if (this.IsWithinRadius(CurrentWayPoint, 100))
+			if (Coordinate.DistanceTo(CurrentWayPoint.Coordinate) < 100)
 			{
 				// reaching a waypoint can start an ambient sentence
 				FireAmbientSentence(eAmbientTrigger.moving);
@@ -1876,7 +1631,7 @@ namespace DOL.GS
 			if (CurrentWayPoint != null)
 			{
 				GameEventMgr.AddHandler(this, GameNPCEvent.ArriveAtTarget, new DOLEventHandler(OnArriveAtWaypoint));
-				WalkTo(CurrentWayPoint, Math.Min(speed, (short)CurrentWayPoint.MaxSpeed));
+				WalkTo(CurrentWayPoint.Coordinate, Math.Min(speed, (short)CurrentWayPoint.MaxSpeed));
 				m_IsMovingOnPath = true;
 				Notify(GameNPCEvent.PathMoveStarts, this);
 			}
@@ -1978,7 +1733,7 @@ namespace DOL.GS
 
 				if (npc.CurrentWayPoint != null)
 				{
-					npc.WalkTo(npc.CurrentWayPoint, (short)Math.Min(npc.PathingNormalSpeed, npc.CurrentWayPoint.MaxSpeed));
+					npc.WalkTo(npc.CurrentWayPoint.Coordinate, (short)Math.Min(npc.PathingNormalSpeed, npc.CurrentWayPoint.MaxSpeed));
 				}
 				else
 				{
@@ -2071,13 +1826,8 @@ namespace DOL.GS
 			GuildName = dbMob.Guild;
 			ExamineArticle = dbMob.ExamineArticle;
 			MessageArticle = dbMob.MessageArticle;
-			m_x = dbMob.X;
-			m_y = dbMob.Y;
-			m_z = dbMob.Z;
-			m_Heading = (ushort)(dbMob.Heading & 0xFFF);
+            Position = Position.Create(regionID: dbMob.Region, x: dbMob.X, y: dbMob.Y, z: dbMob.Z, heading: (ushort)(dbMob.Heading & 0xFFF) );
 			m_maxSpeedBase = (short)dbMob.Speed;
-			m_currentSpeed = 0;
-			CurrentRegionID = dbMob.Region;
 			Realm = (eRealm)dbMob.Realm;
 			Model = dbMob.Model;
 			Size = dbMob.Size;
@@ -2250,12 +2000,12 @@ namespace DOL.GS
 			mob.Guild = GuildName;
 			mob.ExamineArticle = ExamineArticle;
 			mob.MessageArticle = MessageArticle;
-			mob.X = X;
-			mob.Y = Y;
-			mob.Z = Z;
-			mob.Heading = Heading;
+			mob.X = Position.X;
+			mob.Y = Position.Y;
+			mob.Z = Position.Z;
+			mob.Heading = Orientation.InHeading;
 			mob.Speed = MaxSpeedBase;
-			mob.Region = CurrentRegionID;
+			mob.Region = Position.RegionID;
 			mob.Realm = (byte)Realm;
 			mob.Model = Model;
 			mob.Size = Size;
@@ -2643,6 +2393,36 @@ namespace DOL.GS
 			get { return false; }
 		}
 
+
+        /// <summary>
+        /// check if mob shows interact indicator for 
+        /// DQ reward quest
+        /// </summary>		
+        public bool CanShowInteractIndicator(GamePlayer player)
+        {
+            // browse Quests. // patch 0031
+            List<AbstractQuest> dqs;
+            lock (((ICollection)player.QuestList).SyncRoot)
+            {
+                dqs = new List<AbstractQuest>(player.QuestList);
+            }
+
+            foreach (AbstractQuest q in dqs)
+            {
+                DQRewardQ dqrQuest = null;
+                if (q is DQRewardQ)
+                {
+                    dqrQuest = (DQRewardQ)q;
+
+                    if (dqrQuest != null && dqrQuest.CheckInteractPendingIcon(this))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+		
 		/// <summary>
 		/// Should the NPC show a quest indicator, this can be overriden for custom handling
 		/// Checks both scripted and data quests
@@ -2655,6 +2435,13 @@ namespace DOL.GS
 			if (CanShowOneQuest(player))
 				return eQuestIndicator.Available;
 
+            // Interact goal?
+            if (CanShowInteractIndicator(player))
+            {
+                return eQuestIndicator.Pending; 
+            }
+			
+			
 			// Finishing one ?
 			if (CanFinishOneQuest(player))
 				return eQuestIndicator.Finish;
@@ -2694,6 +2481,18 @@ namespace DOL.GS
 					}
 				}
 			}
+
+            // Data driven reward quests 
+            lock (m_dqRewardQs)
+            {
+                foreach (DQRewardQ quest in DQRewardQList)
+                {
+                    if (quest.CheckQuestQualification(player))
+                    {
+                        return true;
+                    }
+                }
+            }
 
 			return false;
 		}
@@ -2735,6 +2534,20 @@ namespace DOL.GS
 							return true;
 					}
 				}
+
+
+                // Handle Data Reward Quest here.
+
+                DQRewardQ dqrQuest = null;
+                if (q is DQRewardQ)
+                {
+                    dqrQuest = (DQRewardQ)q;
+
+                    if (dqrQuest != null && dqrQuest.CheckGoalsCompleted() && dqrQuest.FinishName == Name) 
+                    {
+                        return true;
+                    }
+                }
 
 				// Handle Reward Quest here.
 
@@ -2830,7 +2643,7 @@ namespace DOL.GS
 			if (exists != -1)
 				return false;
 
-			rider.MoveTo(CurrentRegionID, X, Y, Z, Heading);
+			rider.MoveTo(Position);
 
 			Notify(GameNPCEvent.RiderMount, this, new RiderMountEventArgs(rider, this));
 			int slot = GetFreeArrayLocation();
@@ -2982,17 +2795,6 @@ namespace DOL.GS
 		#endregion
 
 		#region Add/Remove/Create/Remove/Update
-
-		/// <summary>
-		/// Broadcasts the NPC Update to all players around
-		/// </summary>
-		public override void BroadcastUpdate()
-		{
-			base.BroadcastUpdate();
-
-			m_lastUpdateTickCount = (uint)Environment.TickCount;
-		}
-
 		/// <summary>
 		/// callback that npc was updated to the world
 		/// so it must be visible to at least one player
@@ -3032,10 +2834,8 @@ namespace DOL.GS
 
 			if (anyPlayer)
 				m_lastVisibleToPlayerTick = (uint)Environment.TickCount;
-			m_spawnPoint.X = X;
-			m_spawnPoint.Y = Y;
-			m_spawnPoint.Z = Z;
-			m_spawnHeading = Heading;
+
+            SpawnPosition = Position;
 			lock (BrainSync)
 			{
 				ABrain brain = Brain;
@@ -3095,10 +2895,7 @@ namespace DOL.GS
 					m_teleporterIndicator.Flags ^= eFlags.CANTTARGET;
 					m_teleporterIndicator.Flags ^= eFlags.DONTSHOWNAME;
 					m_teleporterIndicator.Flags ^= eFlags.FLYING;
-					m_teleporterIndicator.X = X;
-					m_teleporterIndicator.Y = Y;
-					m_teleporterIndicator.Z = Z + 1;
-					m_teleporterIndicator.CurrentRegionID = CurrentRegionID;
+					m_teleporterIndicator.Position = Position + Vector.Create(z: 1);
 				}
 
 				m_teleporterIndicator.AddToWorld();
@@ -3126,10 +2923,7 @@ namespace DOL.GS
             Health = MaxHealth;
             Mana = MaxMana;
             Endurance = MaxEndurance;
-            X = SpawnPoint.X;
-            Y = SpawnPoint.Y;
-            Z = SpawnPoint.Z;
-            Heading = SpawnHeading;
+            Position = SpawnPosition;
 
             return AddToWorld();
         }
@@ -3183,23 +2977,17 @@ namespace DOL.GS
 			return true;
 		}
 
-		/// <summary>
-		/// Move an NPC within the same region without removing from world
-		/// </summary>
-		/// <param name="regionID"></param>
-		/// <param name="x"></param>
-		/// <param name="y"></param>
-		/// <param name="z"></param>
-		/// <param name="heading"></param>
-		/// <param name="forceMove">Move regardless of combat check</param>
-		/// <returns>true if npc was moved</returns>
-		public virtual bool MoveInRegion(ushort regionID, int x, int y, int z, ushort heading, bool forceMove)
-		{
+        [Obsolete("Use MoveWithoutRemovingFromWorld(Position,bool) instead!")]
+        public virtual bool MoveInRegion(ushort regionID, int x, int y, int z, ushort heading, bool forceMove)
+            => MoveWithoutRemovingFromWorld(Position.Create(regionID, x, y, z, heading), forceMove);
+
+        public virtual bool MoveWithoutRemovingFromWorld(Position destination, bool forceMove)
+        {
 			if (m_ObjectState != eObjectState.Active)
 				return false;
 
 			// pets can't be moved across regions
-			if (regionID != CurrentRegionID)
+			if (destination.RegionID != CurrentRegionID)
 				return false;
 
 			if (forceMove == false)
@@ -3215,14 +3003,14 @@ namespace DOL.GS
 					return false;
 			}
 
-			Region rgn = WorldMgr.GetRegion(regionID);
+			Region rgn = WorldMgr.GetRegion(destination.RegionID);
 
-			if (rgn == null || rgn.GetZone(x, y) == null)
+			if (rgn == null || rgn.GetZone(destination.Coordinate) == null)
 				return false;
 
 			// For a pet move simple erase the pet from all clients and redraw in the new location
 
-			Notify(GameObjectEvent.MoveTo, this, new MoveToEventArgs(regionID, x, y, z, heading));
+			Notify(GameObjectEvent.MoveTo, this, new MoveToEventArgs(destination.RegionID, destination.X, destination.Y, destination.Z, destination.Orientation.InHeading));
 
 			if (ObjectState == eObjectState.Active)
 			{
@@ -3232,10 +3020,7 @@ namespace DOL.GS
 				}
 			}
 
-			m_x = x;
-			m_y = y;
-			m_z = z;
-			m_Heading = heading;
+            Position = destination;
 
 			foreach (GamePlayer player in GetPlayersInRadius(WorldMgr.VISIBILITY_DISTANCE))
 			{
@@ -3252,25 +3037,21 @@ namespace DOL.GS
 			return true;
 		}
 
-		/// <summary>
-		/// Gets or Sets the current Region of the Object
-		/// </summary>
-		public override Region CurrentRegion
-		{
-			get { return base.CurrentRegion; }
-			set
+        public override Position Position
+        {
+            set
 			{
-				Region oldRegion = CurrentRegion;
-				base.CurrentRegion = value;
-				Region newRegion = CurrentRegion;
-				if (oldRegion != newRegion && newRegion != null)
+				var oldRegionID = Position.RegionID;
+				base.Position = value;
+				var newRegion = value.RegionID;
+				if (oldRegionID != newRegion && newRegion != 0)
 				{
 					if (m_followTimer != null) m_followTimer.Stop();
 					m_followTimer = new RegionTimer(this);
 					m_followTimer.Callback = new RegionTimerCallback(FollowTimerCallback);
 				}
 			}
-		}
+        }
 
 		/// <summary>
 		/// Marks this object as deleted!
@@ -3943,8 +3724,7 @@ namespace DOL.GS
 			if (AttackState)
 			{
 				// if we're moving we need to lock down the current position
-				if (IsMoving)
-					SaveCurrentPosition();
+				if (IsMoving) SaveCurrentPosition();
 
 				if (ActiveWeaponSlot == eActiveWeaponSlot.Distance)
 				{
@@ -4017,9 +3797,9 @@ namespace DOL.GS
 		public void SetLastMeleeAttackTick()
 		{
 			if (TargetObject.Realm == 0 || Realm == 0)
-				m_lastAttackTickPvE = m_CurrentRegion.Time;
+				m_lastAttackTickPvE = CurrentRegion.Time;
 			else
-				m_lastAttackTickPvP = m_CurrentRegion.Time;
+				m_lastAttackTickPvP = CurrentRegion.Time;
 		}
 
 		private void StartMeleeAttackTimer()
@@ -4701,11 +4481,7 @@ namespace DOL.GS
 						}
 						else
 						{
-							loot.X = X;
-							loot.Y = Y;
-							loot.Z = Z;
-							loot.Heading = Heading;
-							loot.CurrentRegion = CurrentRegion;
+							loot.Position = Position;
 							(loot as WorldInventoryItem).Item.IsCrafted = false;
 							(loot as WorldInventoryItem).Item.Creator = Name;
 						}
@@ -4723,11 +4499,7 @@ namespace DOL.GS
 							invitem = GameInventoryItem.Create(lootTemplate);
 
 						loot = new WorldInventoryItem(invitem);
-						loot.X = X;
-						loot.Y = Y;
-						loot.Z = Z;
-						loot.Heading = Heading;
-						loot.CurrentRegion = CurrentRegion;
+						loot.Position = Position;
 						(loot as WorldInventoryItem).Item.IsCrafted = false;
 						(loot as WorldInventoryItem).Item.Creator = Name;
 
@@ -5554,7 +5326,7 @@ namespace DOL.GS
 			{
 				if (IsReturningToSpawnPoint)
 				{
-					TurnTo(SpawnHeading);
+					TurnTo(SpawnPosition.Orientation);
 					IsReturningToSpawnPoint = false;
 				}
 			}
@@ -5593,7 +5365,7 @@ namespace DOL.GS
 
 			// issuing text
 			if (living is GamePlayer)
-				text = text.Replace("{class}", (living as GamePlayer).CharacterClass.Name).Replace("{race}", (living as GamePlayer).RaceName);
+				text = text.Replace("{class}", (living as GamePlayer).Salutation).Replace("{race}", (living as GamePlayer).RaceName);
 			if (living is GameNPC)
 				text = text.Replace("{class}", "NPC").Replace("{race}", "NPC");
 
@@ -5607,7 +5379,7 @@ namespace DOL.GS
 			// broadcasted , yelled or talked ?
 			if (chosen.Voice.StartsWith("b"))
 			{
-				foreach (GamePlayer player in CurrentRegion.GetPlayersInRadius(X, Y, Z, 25000, false, false))
+				foreach (GamePlayer player in CurrentRegion.GetPlayersInRadius(Coordinate, 25000, false, false))
 				{
 					player.Out.SendMessage(text, eChatType.CT_Broadcast, eChatLoc.CL_ChatWindow);
 				}
@@ -5759,7 +5531,6 @@ namespace DOL.GS
 			copyTarget.CanUseLefthandedWeapon = CanUseLefthandedWeapon;
 			copyTarget.Charisma = Charisma;
 			copyTarget.Constitution = Constitution;
-			copyTarget.CurrentRegion = CurrentRegion;
 			copyTarget.Dexterity = Dexterity;
 			copyTarget.Empathy = Empathy;
 			copyTarget.Endurance = Endurance;
@@ -5770,7 +5541,6 @@ namespace DOL.GS
 			copyTarget.GuildName = GuildName;
 			copyTarget.ExamineArticle = ExamineArticle;
 			copyTarget.MessageArticle = MessageArticle;
-			copyTarget.Heading = Heading;
 			copyTarget.Intelligence = Intelligence;
 			copyTarget.IsCloakHoodUp = IsCloakHoodUp;
 			copyTarget.IsCloakInvisible = IsCloakInvisible;
@@ -5798,9 +5568,7 @@ namespace DOL.GS
 			copyTarget.Strength = Strength;
 			copyTarget.TetherRange = TetherRange;
 			copyTarget.MaxDistance = MaxDistance;
-			copyTarget.X = X;
-			copyTarget.Y = Y;
-			copyTarget.Z = Z;
+			copyTarget.Position = Position;
 			copyTarget.OwnerID = OwnerID;
 			copyTarget.PackageID = PackageID;
 
@@ -5884,16 +5652,12 @@ namespace DOL.GS
 			m_followTarget = new WeakRef(null);
 
 			m_size = 50; //Default size
-			TargetPosition = new Point3D();
 			m_followMinDist = 100;
 			m_followMaxDist = 3000;
 			m_flags = 0;
 			m_maxdistance = 0;
 			m_roamingRange = 0; // default to non roaming - tolakram
 			m_ownerID = "";
-
-			if (m_spawnPoint == null)
-				m_spawnPoint = new Point3D();
 
 			//m_factionName = "";
 			LinkedFactions = new ArrayList(1);

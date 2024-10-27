@@ -28,6 +28,7 @@ using System.Reflection;
 
 using DOL.GS.Utils;
 using Microsoft.Diagnostics.Runtime;
+using DOL.GS.Geometry;
 
 namespace DOL.GS
 {
@@ -361,70 +362,7 @@ namespace DOL.GS
 			
 			return new List<string>();
 		}
-
 		#endregion
-
-#if NETFRAMEWORK
-		[Obsolete("Use GetFormattedStackTraceFrom(Thread) instead.")]
-		public static StackTrace GetThreadStack(Thread thread)
-		{
-			#pragma warning disable 0618
-			try
-			{
-				thread.Suspend();
-			}
-			catch(Exception e)
-			{
-				return new StackTrace(e);
-			}
-			
-			StackTrace trace;
-
-			try
-			{
-				trace = new StackTrace(thread, true);
-			}
-			catch(Exception e)
-			{
-				trace = new StackTrace(e);
-			}
-			finally
-			{
-				thread.Resume();
-			}
-			#pragma warning restore 0618
-			
-			return trace;
-		}
-
-		[Obsolete("Use GetFormattedStackTraceFrom(Thread) instead.")]
-		public static string FormatStackTrace(StackTrace trace)
-		{
-			var str = new StringBuilder(128);
-
-			if (trace == null)
-			{
-				str.Append("(null)");
-			}
-			else
-			{
-				for (int i = 0; i < trace.FrameCount; i++)
-				{
-					StackFrame frame = trace.GetFrame(i);
-					Type declType = frame.GetMethod().DeclaringType;
-					str.Append("   at ")
-						.Append(declType == null ? "(null)" : declType.FullName).Append('.')
-						.Append(frame.GetMethod().Name).Append(" in ")
-						.Append(frame.GetFileName())
-						.Append("  line:").Append(frame.GetFileLineNumber())
-						.Append(" col:").Append(frame.GetFileColumnNumber())
-						.Append("\n");
-				}
-			}
-
-			return str.ToString();
-		}
-#endif
 
 		public static string GetFormattedStackTraceFrom(Thread targetThread)
         {
@@ -477,29 +415,13 @@ namespace DOL.GS
 			return str.ToString();
 		}
 
-		/// <summary>
-		/// [Ganrod] Nidel: Check if between two values are near with tolerance.
-		/// </summary>
-		/// <param name="valueToHave"></param>
-		/// <param name="compareToCompare"></param>
-		/// <param name="tolerance"></param>
-		/// <returns></returns>
+        [Obsolete("This is going to be removed.")]
 		public static bool IsNearValue(int valueToHave, int compareToCompare, ushort tolerance)
 		{
 			return FastMath.Abs(valueToHave - compareToCompare) <= FastMath.Abs(tolerance);
 		}
 
-		/// <summary>
-		/// [Ganrod] Nidel: Check if between two distances are near with tolerance.
-		/// </summary>
-		/// <param name="xH">X coord value to have</param>
-		/// <param name="yH">Y coord value to have</param>
-		/// <param name="zH">Z coord value to have</param>
-		/// <param name="xC">X coord value to compare</param>
-		/// <param name="yC">Y coord value to compare</param>
-		/// <param name="zC">Z coord value to compare</param>
-		/// <param name="tolerance">Tolerance distance between two coords</param>
-		/// <returns></returns>
+        [Obsolete("This is going to be removed.")]
 		public static bool IsNearDistance(int xH, int yH, int zH, int xC, int yC, int zC, ushort tolerance)
 		{
 			return IsNearValue(xH, xC, tolerance) && IsNearValue(yH, yC, tolerance) && IsNearValue(zH, zC, tolerance);

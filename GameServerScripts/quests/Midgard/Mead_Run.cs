@@ -36,14 +36,15 @@ using DOL.GS.Quests;
 using DOL.GS.Behaviour;
 using DOL.GS.Behaviour.Attributes;
 using DOL.AI.Brain;
+using DOL.GS.Geometry;
 
-	namespace DOL.GS.Quests.Midgard {
+namespace DOL.GS.Quests.Midgard {
 	
      /* The first thing we do, is to declare the class we create
 	 * as Quest. To do this, we derive from the abstract class
 	 * BaseQuest	  	 
 	 */
-	public class meadrun : BaseQuest
+	public class MeadRun : BaseQuest
 	{
 		/// <summary>
 		/// Defines a logger for this class.
@@ -83,19 +84,19 @@ using DOL.AI.Brain;
 		/* 
 		* Constructor
 		*/
-		public meadrun() : base()
+		public MeadRun() : base()
 		{
 		}
 
-		public meadrun(GamePlayer questingPlayer) : this(questingPlayer, 1)
+		public MeadRun(GamePlayer questingPlayer) : this(questingPlayer, 1)
 		{
 		}
 
-		public meadrun(GamePlayer questingPlayer, int step) : base(questingPlayer, step)
+		public MeadRun(GamePlayer questingPlayer, int step) : base(questingPlayer, step)
 		{
 		}
 
-		public meadrun(GamePlayer questingPlayer, DBQuest dbQuest) : base(questingPlayer, dbQuest)
+		public MeadRun(GamePlayer questingPlayer, DBQuest dbQuest) : base(questingPlayer, dbQuest)
 	{
 	}
 
@@ -122,15 +123,11 @@ using DOL.AI.Brain;
 					log.Warn("Could not find " + Audun.Name + ", creating ...");
 				Audun.GuildName = "Part of " + questTitle + " Quest";
 				Audun.Realm = eRealm.Midgard;
-				Audun.CurrentRegionID = 101;
 				Audun.Size = 48;
 				Audun.Level = 49;
 				Audun.MaxSpeedBase = 191;
 				Audun.Faction = FactionMgr.GetFactionByID(0);
-				Audun.X = 33283;
-				Audun.Y = 35305;
-				Audun.Z = 8027;
-				Audun.Heading = 1763;
+                Audun.Position = Position.Create(regionID: 101, x: 33283, y: 35305, z: 8027, heading: 1763);
 				Audun.RespawnInterval = -1;
 				Audun.BodyType = 0;
 				
@@ -167,15 +164,11 @@ using DOL.AI.Brain;
 					log.Warn("Could not find " + GuardOlja.Name + ", creating ...");
 				GuardOlja.GuildName = "Part of " + questTitle + " Quest";
 				GuardOlja.Realm = eRealm.Midgard;
-				GuardOlja.CurrentRegionID = 229;
 				GuardOlja.Size = 50;
 				GuardOlja.Level = 50;
 				GuardOlja.MaxSpeedBase = 191;
 				GuardOlja.Faction = FactionMgr.GetFactionByID(0);
-				GuardOlja.X = 47994;
-				GuardOlja.Y = 37341;
-				GuardOlja.Z = 21812;
-				GuardOlja.Heading = 204;
+                GuardOlja.Position = Position.Create(regionID: 229, x: 47994, y: 37341, z: 21812, heading: 204);
 				GuardOlja.RespawnInterval = -1;
 				GuardOlja.BodyType = 0;
 				
@@ -361,46 +354,46 @@ using DOL.AI.Brain;
 		
 		#region defineQuestParts
 
-		QuestBuilder builder = QuestMgr.getBuilder(typeof(meadrun));
+		QuestBuilder builder = QuestMgr.getBuilder(typeof(MeadRun));
 			QuestBehaviour a;
 			a = builder.CreateBehaviour(Audun,-1);
 				a.AddTrigger(eTriggerType.Interact,null,Audun);
-			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.meadrun),Audun);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.meadrun),null,(eComparator)5);
+			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.MeadRun),Audun);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.MeadRun),null,(eComparator)5);
 			a.AddAction(eActionType.Talk,"Greetings. You appear to be down on your luck. I have a [proposition] for you if you're interested.",null);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Audun,-1);
 				a.AddTrigger(eTriggerType.Whisper,"proposition",Audun);
-			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.meadrun),Audun);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.meadrun),null,(eComparator)5);
+			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.MeadRun),Audun);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.MeadRun),null,(eComparator)5);
 			a.AddAction(eActionType.Talk,"I need to deliver some mead to the guards just inside the Burial Grounds. There is a bit of coin to be had if you would deliver the mead for me.",Audun);
-			a.AddAction(eActionType.OfferQuest,typeof(DOL.GS.Quests.Midgard.meadrun),"Will you deliver the mead for Audun? [Levels 1-4]");
+			a.AddAction(eActionType.OfferQuest,typeof(DOL.GS.Quests.Midgard.MeadRun),"Will you deliver the mead for Audun? [Levels 1-4]");
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Audun,-1);
-				a.AddTrigger(eTriggerType.DeclineQuest,null,typeof(DOL.GS.Quests.Midgard.meadrun));
+				a.AddTrigger(eTriggerType.DeclineQuest,null,typeof(DOL.GS.Quests.Midgard.MeadRun));
 			a.AddAction(eActionType.Talk,"No problem. See you",Audun);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Audun,-1);
-				a.AddTrigger(eTriggerType.AcceptQuest,null,typeof(DOL.GS.Quests.Midgard.meadrun));
+				a.AddTrigger(eTriggerType.AcceptQuest,null,typeof(DOL.GS.Quests.Midgard.MeadRun));
 			a.AddAction(eActionType.Talk,"Here take the mead to Guard Olja inside the entrance of the Burial Grounds.",Audun);
 			a.AddAction(eActionType.GiveItem,bottleofmead,Audun);
-			a.AddAction(eActionType.GiveQuest,typeof(DOL.GS.Quests.Midgard.meadrun),Audun);
+			a.AddAction(eActionType.GiveQuest,typeof(DOL.GS.Quests.Midgard.MeadRun),Audun);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(GuardOlja,-1);
 				a.AddTrigger(eTriggerType.GiveItem,GuardOlja,bottleofmead);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.meadrun),null);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.MeadRun),null);
 			a.AddAction(eActionType.Talk,"Thanks. Here, take this empty bottle back to Auduan.",GuardOlja);
 			a.AddAction(eActionType.GiveItem,emptybottle,GuardOlja);
 			a.AddAction(eActionType.TakeItem,bottleofmead,null);
-			a.AddAction(eActionType.IncQuestStep,typeof(DOL.GS.Quests.Midgard.meadrun),null);
+			a.AddAction(eActionType.IncQuestStep,typeof(DOL.GS.Quests.Midgard.MeadRun),null);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Audun,-1);
 				a.AddTrigger(eTriggerType.GiveItem,Audun,emptybottle);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.meadrun),2,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.MeadRun),2,(eComparator)3);
 			a.AddAction(eActionType.Talk,"Good work. Here is that bit of coin I was talking about. Check back with me later, and I may have more work for you.",Audun);
 			a.AddAction(eActionType.GiveXP,5,null);
 			a.AddAction(eActionType.GiveGold,27,null);
-			a.AddAction(eActionType.FinishQuest,typeof(DOL.GS.Quests.Midgard.meadrun),null);
+			a.AddAction(eActionType.FinishQuest,typeof(DOL.GS.Quests.Midgard.MeadRun),null);
 			AddBehaviour(a);
 			
 			#endregion
@@ -409,7 +402,7 @@ using DOL.AI.Brain;
 			
 			// Custom Scriptloaded Code End
 			if (Audun!=null) {
-				Audun.AddQuestToGive(typeof (meadrun));
+				Audun.AddQuestToGive(typeof (MeadRun));
 			}
 			if (log.IsInfoEnabled)
 				log.Info("Quest \"" + questTitle + "\" initialized");
@@ -431,7 +424,7 @@ using DOL.AI.Brain;
 			if (Audun == null)
 				return;
 			/* Now we remove the possibility to give this quest to players */			
-			Audun.RemoveQuestToGive(typeof (meadrun));
+			Audun.RemoveQuestToGive(typeof (MeadRun));
 		}
 
 		/* Now we set the quest name.
@@ -476,7 +469,7 @@ using DOL.AI.Brain;
 		public override bool CheckQuestQualification(GamePlayer player)
 		{		
 			// if the player is already doing the quest his level is no longer of relevance
-			if (player.IsDoingQuest(typeof (meadrun)) != null)
+			if (player.IsDoingQuest(typeof (MeadRun)) != null)
 				return true;
 				
 			// Custom Code Begin

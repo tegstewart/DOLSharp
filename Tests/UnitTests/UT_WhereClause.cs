@@ -31,7 +31,7 @@ namespace DOL.UnitTests.Database
         {
             var expression = DB.Column("key").IsEqualTo(1);
 
-            Assert.AreEqual("WHERE key = @a", expression.ParameterizedText);
+            Assert.That(expression.ParameterizedText, Is.EqualTo("WHERE key = @a"));
         }
 
         [Test]
@@ -40,7 +40,7 @@ namespace DOL.UnitTests.Database
             var expression = DB.Column("key").IsEqualTo(1);
 
             var firstQueryParameter = expression.Parameters[0];
-            Assert.AreEqual(firstQueryParameter.Value, 1);
+            Assert.That(1, Is.EqualTo(firstQueryParameter.Value));
         }
 
         [Test]
@@ -53,29 +53,47 @@ namespace DOL.UnitTests.Database
 
             var actual = andExpression.ParameterizedText;
             var expected = $"WHERE ( foo = @a AND bar = @b )";
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
         public void ParameterizedText_FooIsInOneAndTwo_FooIsInAtACommaAtB()
         {
-            var expr = DB.Column("foo").IsIn(new [] { 1, 2 });
+            var expr = DB.Column("foo").IsIn(new[] { 1, 2 });
             var placeHolder1 = expr.Parameters[0].Item1;
             var placeHolder2 = expr.Parameters[1].Item1;
             var actual = expr.ParameterizedText;
             var expected = $"WHERE foo IN ( {placeHolder1} , {placeHolder2} )";
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
         public void ParameterizedText_FooIsInAandB_FooIsInAtACommaAtB()
         {
-            var expr = DB.Column("foo").IsIn(new [] { "a", "b" });
+            var expr = DB.Column("foo").IsIn(new[] { "a", "b" });
             var placeHolder1 = expr.Parameters[0].Item1;
             var placeHolder2 = expr.Parameters[1].Item1;
             var actual = expr.ParameterizedText;
             var expected = $"WHERE foo IN ( {placeHolder1} , {placeHolder2} )";
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void ParameterizedText_FooIsInEmptyArray_WhereFalse()
+        {
+            var expr = DB.Column("foo").IsIn(Array.Empty<object>());
+            var actual = expr.ParameterizedText;
+            var expected = $"WHERE false";
+            Assert.That(actual, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void ParameterizedText_FooIsNotInEmptyArray_WhereTrue()
+        {
+            var expr = DB.Column("foo").IsNotIn(Array.Empty<object>());
+            var actual = expr.ParameterizedText;
+            var expected = $"WHERE true";
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
@@ -88,7 +106,7 @@ namespace DOL.UnitTests.Database
 
             var actual = andExpression.Parameters;
             var expected = new[] { new QueryParameter("@a", 1), new QueryParameter("@b", 2) };
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
@@ -98,7 +116,7 @@ namespace DOL.UnitTests.Database
 
             var actual = expression.ParameterizedText;
             var expected = string.Empty;
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
@@ -107,7 +125,7 @@ namespace DOL.UnitTests.Database
             var expression = WhereClause.Empty;
 
             var actual = expression.Parameters;
-            Assert.IsEmpty(actual);
+            Assert.That(actual, Is.Empty);
         }
 
         [Test]
@@ -120,7 +138,7 @@ namespace DOL.UnitTests.Database
 
             var actual = andExpression;
             var expected = filterExpression;
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
@@ -133,7 +151,7 @@ namespace DOL.UnitTests.Database
 
             var actual = andExpression;
             var expected = filterExpression;
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
@@ -143,7 +161,7 @@ namespace DOL.UnitTests.Database
 
             var actual = andExpression.ParameterizedText;
             var expected = string.Empty;
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
@@ -151,7 +169,7 @@ namespace DOL.UnitTests.Database
         {
             var actual = DB.Column("Foo").IsNull().ParameterizedText;
             var expected = "WHERE Foo IS NULL";
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
@@ -169,7 +187,7 @@ namespace DOL.UnitTests.Database
         [Test]
         public void Equals_TwoFreshEmptyWhereClauses_True()
         {
-            Assert.IsTrue(WhereClause.Empty.Equals(WhereClause.Empty));
+            Assert.That(WhereClause.Empty.Equals(WhereClause.Empty), Is.True);
         }
 
         [Test]
@@ -178,7 +196,7 @@ namespace DOL.UnitTests.Database
             var expression1 = DB.Column("foo").IsEqualTo(1);
             var expression2 = DB.Column("foo").IsEqualTo(1);
 
-            Assert.IsTrue(expression1.Equals(expression2));
+            Assert.That(expression1.Equals(expression2), Is.True);
         }
 
         [Test]
@@ -187,7 +205,7 @@ namespace DOL.UnitTests.Database
             var expression1 = DB.Column("foo").IsEqualTo(0);
             var expression2 = DB.Column("foo").IsEqualTo(1);
 
-            Assert.IsFalse(expression1.Equals(expression2));
+            Assert.That(expression1.Equals(expression2), Is.False);
         }
 
         [Test]
@@ -196,7 +214,7 @@ namespace DOL.UnitTests.Database
             var expression1 = DB.Column("foo").IsEqualTo(1);
             var expression2 = DB.Column("bar").IsEqualTo(1);
 
-            Assert.IsFalse(expression1.Equals(expression2));
+            Assert.That(expression1.Equals(expression2), Is.False);
         }
 
         [Test]
@@ -205,7 +223,7 @@ namespace DOL.UnitTests.Database
             var expression1 = DB.Column("foo").IsEqualTo(1);
             var expression2 = DB.Column("foo").IsNotEqualTo(1);
 
-            Assert.IsFalse(expression1.Equals(expression2));
+            Assert.That(expression1.Equals(expression2), Is.False);
         }
 
         [Test]
@@ -215,7 +233,7 @@ namespace DOL.UnitTests.Database
             var andExpression1 = filterExpression.And(filterExpression);
             var andExpression2 = filterExpression.And(filterExpression);
 
-            Assert.IsTrue(andExpression1.Equals(andExpression2));
+            Assert.That(andExpression1.Equals(andExpression2), Is.True);
         }
 
         [Test]
@@ -225,7 +243,7 @@ namespace DOL.UnitTests.Database
             var andExpression = filterExpression.And(filterExpression);
             var orExpression = filterExpression.Or(filterExpression);
 
-            Assert.IsFalse(andExpression.Equals(orExpression));
+            Assert.That(andExpression.Equals(orExpression), Is.False);
         }
     }
 }

@@ -19,6 +19,7 @@
 using System;
 using DOL.Events;
 using DOL.GS;
+using DOL.GS.Geometry;
 using NUnit.Framework;
 
 namespace DOL.Integration.Server
@@ -35,20 +36,16 @@ namespace DOL.Integration.Server
 		[Test, Explicit]
 		public void AddObject()
 		{
-			Region region = WorldMgr.GetRegion(1);
 			GameObject obj = new GameNPC();
 			obj.Name="TestObject";
-			obj.X = 400000;
-			obj.Y = 200000;
-			obj.Z = 2000;
-			obj.CurrentRegion = region;
+            obj.Position = Position.Create(regionID: 1, x: 400000, y: 200000, z: 2000);
 
 			obj.AddToWorld();
 
 			if (obj.ObjectID<0)
 				Assert.Fail("Failed to add object to Region. ObjectId < 0");
 
-			Assert.AreEqual(region.GetObject((ushort)obj.ObjectID),obj);
+			Assert.That(obj, Is.EqualTo(obj.CurrentRegion.GetObject((ushort)obj.ObjectID)));
 		}
 
 
@@ -56,27 +53,28 @@ namespace DOL.Integration.Server
 		public void AddArea()
 		{
 			Region region = WorldMgr.GetRegion(1);
-			IArea insertArea = region.AddArea(new Area.Circle(null,1000,1000,0,500));
+            var circleLocation = Coordinate.Create(1000,1000,0);
+			IArea insertArea = region.AddArea(new Area.Circle(null,circleLocation,500));
 
-			Assert.IsNotNull(insertArea);
+			Assert.That(insertArea, Is.Not.Null);
 
-			var areas = region.GetAreasOfSpot(501,1000,0);			
-			Assert.IsTrue(areas.Count>0);
+			var areas = region.GetAreasOfSpot(Coordinate.Create(501,1000,0));
+			Assert.That(areas.Count>0, Is.True);
 
 			bool found = false;
 			foreach( IArea ar in areas)
 			{
-				if (ar == insertArea) 
+				if (ar == insertArea)
 				{
-					found = true;	
+					found = true;
 					break;
 				}
 			}
-			Assert.IsTrue(found);
+			Assert.That(found, Is.True);
 
 			//
-			areas = region.GetAreasOfSpot(1499,1000,2000);			
-			Assert.IsTrue(areas.Count>0);
+			areas = region.GetAreasOfSpot(Coordinate.Create(1499,1000,2000));
+			Assert.That(areas.Count>0, Is.True);
 
 			found = false;
 			foreach( IArea ar in areas)
@@ -87,7 +85,7 @@ namespace DOL.Integration.Server
 					break;
 				}
 			}
-			Assert.IsTrue(found);
+			Assert.That(found, Is.True);
 
 
 			//Notify test
@@ -98,12 +96,12 @@ namespace DOL.Integration.Server
 			insertArea.RegisterPlayerEnter(new DOLEventHandler(NotifyTest));
 			insertArea.OnPlayerEnter(player);
 
-			Assert.IsTrue(notified);
+			Assert.That(notified, Is.True);
 
 			region.RemoveArea(insertArea);
 
-			areas = region.GetAreasOfSpot(1499,1000,2000);
-			Assert.IsTrue(areas.Count==0);
+			areas = region.GetAreasOfSpot(Coordinate.Create(1499,1000,2000));
+			Assert.That(areas.Count==0, Is.True);
 
 		}
 

@@ -17,12 +17,11 @@
  *
  */
 using System;
+using System.Numerics;
 
 namespace DOL.GS
 {
-	/// <summary>
-	/// Defines a 3D point
-	/// </summary>
+    [Obsolete("Use Coordinate instead!")]
 	public class Point3D : Point2D, IPoint3D
 	{
 		/// <summary>
@@ -95,18 +94,9 @@ namespace DOL.GS
 		/// <returns></returns>
 		public override string ToString()
 		{
-			return string.Format("({0}, {1}, {2})", m_x.ToString(), m_y.ToString(), m_z.ToString());
+			return string.Format("({0}, {1}, {2})", X.ToString(), Y.ToString(), Z.ToString());
 		}
 
-		/// <summary>
-		/// Get the distance to a point
-		/// </summary>
-		/// <remarks>
-		/// If you don't actually need the distance value, it is faster
-		/// to use IsWithinRadius (since it avoids the square root calculation)
-		/// </remarks>
-		/// <param name="point">Target point</param>
-		/// <returns>Distance to point</returns>
 		public virtual int GetDistanceTo(IPoint3D point)
 		{
 			double dx = (double) X - point.X;
@@ -131,25 +121,16 @@ namespace DOL.GS
 			return (int) Math.Sqrt(dx*dx + dy*dy + dz*dz);
 		}
 
-		/// <summary>
-		/// Determine if another point is within a given radius
-		/// </summary>
-		/// <param name="point">Target point</param>
-		/// <param name="radius">Radius</param>
-		/// <returns>True if the point is within the radius, otherwise false</returns>
+		public virtual float GetDistanceTo(Vector3 point)
+		{
+			return Vector3.Distance(new Vector3(X, Y, Z), point);
+		}
+
 		public bool IsWithinRadius(IPoint3D point, int radius)
 		{
 			return IsWithinRadius(point, radius, false);
 		}
 
-
-		/// <summary>
-		/// Determine if another point is within a given radius, optionally ignoring Z values
-		/// </summary>
-		/// <param name="point">Target point</param>
-		/// <param name="radius">Radius</param>
-		/// <param name="ignoreZ">ignore Z</param>
-		/// <returns>True if the point is within the radius, otherwise false</returns>
 		public bool IsWithinRadius(IPoint3D point, int radius, bool ignoreZ)
 		{
 			if (radius > ushort.MaxValue)

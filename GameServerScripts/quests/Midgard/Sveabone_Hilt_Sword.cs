@@ -36,14 +36,15 @@ using DOL.GS.Quests;
 using DOL.GS.Behaviour;
 using DOL.GS.Behaviour.Attributes;
 using DOL.AI.Brain;
+using DOL.GS.Geometry;
 
-	namespace DOL.GS.Quests.Midgard {
+namespace DOL.GS.Quests.Midgard {
 	
      /* The first thing we do, is to declare the class we create
 	 * as Quest. To do this, we derive from the abstract class
 	 * BaseQuest	  	 
 	 */
-	public class sveabonehiltsword : BaseQuest
+	public class SveaboneHiltSword : BaseQuest
 	{
 		/// <summary>
 		/// Defines a logger for this class.
@@ -83,19 +84,19 @@ using DOL.AI.Brain;
 		/* 
 		* Constructor
 		*/
-		public sveabonehiltsword() : base()
+		public SveaboneHiltSword() : base()
 		{
 		}
 
-		public sveabonehiltsword(GamePlayer questingPlayer) : this(questingPlayer, 1)
+		public SveaboneHiltSword(GamePlayer questingPlayer) : this(questingPlayer, 1)
 		{
 		}
 
-		public sveabonehiltsword(GamePlayer questingPlayer, int step) : base(questingPlayer, step)
+		public SveaboneHiltSword(GamePlayer questingPlayer, int step) : base(questingPlayer, step)
 		{
 		}
 
-		public sveabonehiltsword(GamePlayer questingPlayer, DBQuest dbQuest) : base(questingPlayer, dbQuest)
+		public SveaboneHiltSword(GamePlayer questingPlayer, DBQuest dbQuest) : base(questingPlayer, dbQuest)
 	{
 	}
 
@@ -122,15 +123,11 @@ using DOL.AI.Brain;
 					log.Warn("Could not find " + Gridash.Name + ", creating ...");
 				Gridash.GuildName = "Part of " + questTitle + " Quest";
 				Gridash.Realm = eRealm.Midgard;
-				Gridash.CurrentRegionID = 100;
 				Gridash.Size = 51;
 				Gridash.Level = 21;
 				Gridash.MaxSpeedBase = 191;
 				Gridash.Faction = FactionMgr.GetFactionByID(0);
-				Gridash.X = 772795;
-				Gridash.Y = 753335;
-				Gridash.Z = 4600;
-				Gridash.Heading = 3356;
+                Gridash.Position = Position.Create(regionID: 100, x: 772795, y: 753335, z: 4600, heading: 3356);
 				Gridash.RespawnInterval = -1;
 				Gridash.BodyType = 0;
 				
@@ -389,57 +386,57 @@ using DOL.AI.Brain;
 		
 		#region defineQuestParts
 
-		QuestBuilder builder = QuestMgr.getBuilder(typeof(sveabonehiltsword));
+		QuestBuilder builder = QuestMgr.getBuilder(typeof(SveaboneHiltSword));
 			QuestBehaviour a;
 			a = builder.CreateBehaviour(Gridash,-1);
 				a.AddTrigger(eTriggerType.Interact,null,Gridash);
-			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),Gridash);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),null,(eComparator)5);
+			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),Gridash);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),null,(eComparator)5);
 			a.AddAction(eActionType.Talk,"Hail young one! I have noticed that you do not carry one of my fine [bone hilt swords].",Gridash);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Gridash,-1);
 				a.AddTrigger(eTriggerType.Whisper,"bone hilt swords",Gridash);
-			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),Gridash);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),null,(eComparator)5);
+			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),Gridash);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),null,(eComparator)5);
 			a.AddAction(eActionType.Talk,"Aye! They are some of my finest works! I don't suppose you [would care for one] eh?",Gridash);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Gridash,-1);
 				a.AddTrigger(eTriggerType.Whisper,"would care for one",Gridash);
-			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),Gridash);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),null,(eComparator)5);
-			a.AddAction(eActionType.OfferQuest,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),"Will you do what is asked so that Gridash can make a Sveabone hilt sword?");
+			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),Gridash);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),null,(eComparator)5);
+			a.AddAction(eActionType.OfferQuest,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),"Will you do what is asked so that Gridash can make a Sveabone hilt sword?");
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Gridash,-1);
-				a.AddTrigger(eTriggerType.DeclineQuest,null,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword));
+				a.AddTrigger(eTriggerType.DeclineQuest,null,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword));
 			a.AddAction(eActionType.Talk,"No problem. See you",Gridash);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Gridash,-1);
-				a.AddTrigger(eTriggerType.AcceptQuest,null,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword));
+				a.AddTrigger(eTriggerType.AcceptQuest,null,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword));
 			a.AddAction(eActionType.Talk,"Oh great then! Run along and buy me a bronze short sword. I should be ready once you return.",Gridash);
-			a.AddAction(eActionType.GiveQuest,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),Gridash);
+			a.AddAction(eActionType.GiveQuest,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),Gridash);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Gridash,-1);
 				a.AddTrigger(eTriggerType.GiveItem,Gridash,bronze_short_sword);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),null);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),null);
 			a.AddAction(eActionType.Talk,"Good work! I cannot seem to find anymore sveawolf teeth to fashion your weapon. Find one and return it to me.",Gridash);
 			a.AddAction(eActionType.TakeItem,bronze_short_sword,null);
-			a.AddAction(eActionType.IncQuestStep,typeof(sveabonehiltsword),null);
+			a.AddAction(eActionType.IncQuestStep,typeof(SveaboneHiltSword),null);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Gridash,-1);
 				a.AddTrigger(eTriggerType.EnemyKilled,"young sveawof",null);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),2,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),2,(eComparator)3);
 			a.AddAction(eActionType.GiveItem,sveawolftooth,null);
-			a.AddAction(eActionType.IncQuestStep,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),null);
+			a.AddAction(eActionType.IncQuestStep,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),null);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(Gridash,-1);
 				a.AddTrigger(eTriggerType.GiveItem,Gridash,sveawolftooth);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),3,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),3,(eComparator)3);
 			a.AddAction(eActionType.Talk,"Here is your completed work. I hope it serves you well!",Gridash);
 			a.AddAction(eActionType.TakeItem,sveawolftooth,null);
 			a.AddAction(eActionType.GiveItem,sveabone_hilt_sword,Gridash);
 			a.AddAction(eActionType.GiveXP,20,null);
 			a.AddAction(eActionType.GiveGold,450,null);
-			a.AddAction(eActionType.FinishQuest,typeof(DOL.GS.Quests.Midgard.sveabonehiltsword),null);
+			a.AddAction(eActionType.FinishQuest,typeof(DOL.GS.Quests.Midgard.SveaboneHiltSword),null);
 			AddBehaviour(a);
 			
 			#endregion
@@ -448,7 +445,7 @@ using DOL.AI.Brain;
 			
 			// Custom Scriptloaded Code End
 			if (Gridash!=null) {
-				Gridash.AddQuestToGive(typeof (sveabonehiltsword));
+				Gridash.AddQuestToGive(typeof (SveaboneHiltSword));
 			}
 			if (log.IsInfoEnabled)
 				log.Info("Quest \"" + questTitle + "\" initialized");
@@ -470,7 +467,7 @@ using DOL.AI.Brain;
 			if (Gridash == null)
 				return;
 			/* Now we remove the possibility to give this quest to players */			
-			Gridash.RemoveQuestToGive(typeof (sveabonehiltsword));
+			Gridash.RemoveQuestToGive(typeof (SveaboneHiltSword));
 		}
 
 		/* Now we set the quest name.
@@ -518,7 +515,7 @@ using DOL.AI.Brain;
 		public override bool CheckQuestQualification(GamePlayer player)
 		{		
 			// if the player is already doing the quest his level is no longer of relevance
-			if (player.IsDoingQuest(typeof (sveabonehiltsword)) != null)
+			if (player.IsDoingQuest(typeof (SveaboneHiltSword)) != null)
 				return true;
 				
 			// Custom Code Begin

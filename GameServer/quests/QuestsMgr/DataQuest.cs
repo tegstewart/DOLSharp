@@ -33,6 +33,7 @@ using DOL.GS.PacketHandler;
 
 using log4net;
 using DOL.GS.Finance;
+using DOL.GS.Geometry;
 
 namespace DOL.GS.Quests
 {
@@ -560,18 +561,21 @@ namespace DOL.GS.Quests
 					parse1 = lastParse.Split('|');
 					foreach (string str in parse1)
 					{
-						ItemTemplate item = GameServer.Database.FindObjectByKey<ItemTemplate>(str);
-						if (item != null)
+						if (str != null && !str.Equals(""))
 						{
-							m_finalRewards.Add(item);
-						}
-						else
-						{
-                            string errorText = string.Format("DataQuest: Final reward ItemTemplate not found: {0}", str);
-                            log.Error(errorText);
-                            m_lastErrorText += " " + errorText;
+                            ItemTemplate item = GameServer.Database.FindObjectByKey<ItemTemplate>(str);
+                            if (item != null)
+                            {
+                                m_finalRewards.Add(item);
+                            }
+                            else
+                            {
+                                string errorText = string.Format("DataQuest: Final reward ItemTemplate not found: {0}", str);
+                                log.Error(errorText);
+                                m_lastErrorText += " " + errorText;
+                            }
                         }
-					}
+                    }
 				}
 
 				lastParse = m_dataQuest.QuestDependency;
@@ -1966,7 +1970,7 @@ namespace DOL.GS.Quests
                             GameNPC npc = giver as GameNPC;
                             player.Out.SendNPCsQuestEffect(npc, npc.GetQuestIndicator(player));
 						}
-						player.Out.SendSoundEffect(7, 0, 0, 0, 0, 0);
+						player.Out.SendSoundEffect(7, Position.Zero, 0);
 						break;
 					}
 				}
@@ -3061,7 +3065,7 @@ namespace DOL.GS.Quests
 
 			if (StartType == eStartType.RewardQuest)
 			{
-				m_questPlayer.Out.SendSoundEffect(11, 0, 0, 0, 0, 0);
+				m_questPlayer.Out.SendSoundEffect(11, Position.Zero, 0);
 			}
 			if (!string.IsNullOrEmpty(m_dataQuest.FinishText)) // Give users option to have 'finish' text with rewardquest too
 			{

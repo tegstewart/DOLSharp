@@ -40,12 +40,18 @@ using log4net;
 using DOL.GS.ServerProperties;
 using DOL.GS.Finance;
 using DOL.GS.Profession;
+using DOL.GS.Behaviour;
+using DOL.GS.Geometry;
 
 namespace DOL.GS.PacketHandler
 {
 	[PacketLib(168, GameClient.eClientVersion.Version168)]
+	
 	public class PacketLib168 : AbstractPacketLib, IPacketLib
 	{
+        private const ushort MAX_STORY_LENGTH = 1000;   // Via trial and error, 1.108 client.
+                                                        // Often will cut off text around 990 but longer strings do not result in any errors. -Tolakram
+														
 		private const int MaxPacketLength = 2048;
 
 		private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -232,7 +238,8 @@ namespace DOL.GS.PacketHandler
 							Region reg = WorldMgr.GetRegion((ushort) characters[j].Region);
 							if (reg != null)
 							{
-								var description = m_gameClient.GetTranslatedSpotDescription(reg, characters[j].Xpos, characters[j].Ypos, characters[j].Zpos);
+                                var coordinate = characters[j].GetPosition().Coordinate;
+								var description = GamePlayerUtils.GetTranslatedSpotDescription(reg, m_gameClient, coordinate);
 								pak.FillString(description, 24);
 							}
 							else
@@ -533,10 +540,10 @@ namespace DOL.GS.PacketHandler
 			using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.PositionAndObjectID)))
 			{
 				pak.WriteShort((ushort) m_gameClient.Player.ObjectID); //This is the player's objectid not Sessionid!!!
-				pak.WriteShort((ushort) m_gameClient.Player.Z);
-				pak.WriteInt((uint) m_gameClient.Player.X);
-				pak.WriteInt((uint) m_gameClient.Player.Y);
-				pak.WriteShort(m_gameClient.Player.Heading);
+				pak.WriteShort((ushort) m_gameClient.Player.Position.Z);
+				pak.WriteInt((uint) m_gameClient.Player.Position.X);
+				pak.WriteInt((uint) m_gameClient.Player.Position.Y);
+				pak.WriteShort(m_gameClient.Player.Orientation.InHeading);
 
 				int flags = 0;
 				if (m_gameClient.Player.CurrentZone.IsDivingEnabled)
@@ -555,11 +562,11 @@ namespace DOL.GS.PacketHandler
 
 			using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.CharacterJump)))
 			{
-				pak.WriteInt((uint) (headingOnly ? 0 : m_gameClient.Player.X));
-				pak.WriteInt((uint) (headingOnly ? 0 : m_gameClient.Player.Y));
+				pak.WriteInt((uint) (headingOnly ? 0 : m_gameClient.Player.Position.X));
+				pak.WriteInt((uint) (headingOnly ? 0 : m_gameClient.Player.Position.Y));
 				pak.WriteShort((ushort) m_gameClient.Player.ObjectID);
-				pak.WriteShort((ushort) (headingOnly ? 0 : m_gameClient.Player.Z));
-				pak.WriteShort(m_gameClient.Player.Heading);
+				pak.WriteShort((ushort) (headingOnly ? 0 : m_gameClient.Player.Position.Z));
+				pak.WriteShort(m_gameClient.Player.Orientation.InHeading);
 				if (m_gameClient.Player.InHouse == false || m_gameClient.Player.CurrentHouse == null)
 				{
 					pak.WriteShort(0);
@@ -657,6 +664,12 @@ namespace DOL.GS.PacketHandler
 			}
 		}
 
+        protected ushort GetXOffsetInZone(GamePlayer player)
+            => (ushort)(player.Coordinate.X - player.CurrentZone.Offset.X);
+
+        protected ushort GetYOffsetInZone(GamePlayer player)
+            => (ushort)(player.Coordinate.Y - player.CurrentZone.Offset.Y);
+
 		public virtual void SendPlayerCreate(GamePlayer playerToCreate)
 		{
 			if (playerToCreate == null)
@@ -688,14 +701,14 @@ namespace DOL.GS.PacketHandler
 				pak.WriteShort((ushort) playerToCreate.ObjectID);
 				//pak.WriteInt(playerToCreate.X);
 				//pak.WriteInt(playerToCreate.Y);
-				pak.WriteShort((ushort) playerRegion.GetXOffInZone(playerToCreate.X, playerToCreate.Y));
-				pak.WriteShort((ushort) playerRegion.GetYOffInZone(playerToCreate.X, playerToCreate.Y));
+				pak.WriteShort(GetXOffsetInZone(playerToCreate));
+				pak.WriteShort(GetYOffsetInZone(playerToCreate));
 
 				//Dinberg:Instances - changing to ZoneSkinID for instance zones.
 				pak.WriteByte((byte) playerZone.ZoneSkinID);
 				pak.WriteByte(0);
-				pak.WriteShort((ushort) playerToCreate.Z);
-				pak.WriteShort(playerToCreate.Heading);
+				pak.WriteShort((ushort) playerToCreate.Position.Z);
+				pak.WriteShort(playerToCreate.Orientation.InHeading);
 				pak.WriteShort(playerToCreate.Model);
 				//DOLConsole.WriteLine("send created player "+target.Player.Name+" to "+client.Player.Name+" alive="+target.Player.Alive);
 				pak.WriteByte((byte) (playerToCreate.IsAlive ? 0x1 : 0x0));
@@ -758,11 +771,8 @@ namespace DOL.GS.PacketHandler
 				return;
 			}
 
-			var xOffsetInZone = (ushort) (obj.X - z.XOffset);
-			var yOffsetInZone = (ushort) (obj.Y - z.YOffset);
-			ushort xOffsetInTargetZone = 0;
-			ushort yOffsetInTargetZone = 0;
-			ushort zOffsetInTargetZone = 0;
+            var currentZoneCoord = obj.Coordinate - z.Offset;
+            var targetZoneCoord = Coordinate.Zero;
 
 			int speed = 0;
 			ushort targetZone = 0;
@@ -794,17 +804,19 @@ namespace DOL.GS.PacketHandler
 					flags |= 0x20;
 				}
 
-				if (npc.IsMoving && !npc.IsAtTargetPosition)
+				if (npc.IsMoving && !npc.IsAtTargetLocation)
 				{
 					speed = npc.CurrentSpeed;
-					if (npc.TargetPosition.X != 0 || npc.TargetPosition.Y != 0 || npc.TargetPosition.Z != 0)
+					if (npc.Destination != Coordinate.Nowhere && npc.Destination != npc.Coordinate)
 					{
-						Zone tz = npc.CurrentRegion.GetZone(npc.TargetPosition.X, npc.TargetPosition.Y);
+						Zone tz = npc.CurrentRegion.GetZone(npc.Destination);
 						if (tz != null)
 						{
-							xOffsetInTargetZone = (ushort) (npc.TargetPosition.X - tz.XOffset);
-							yOffsetInTargetZone = (ushort) (npc.TargetPosition.Y - tz.YOffset);
-							zOffsetInTargetZone = (ushort) (npc.TargetPosition.Z);
+                            targetZoneCoord = npc.Destination - tz.Offset;
+
+                            var overshootVector = targetZoneCoord - currentZoneCoord;
+                            overshootVector = overshootVector * (100/overshootVector.Length);
+                            targetZoneCoord += overshootVector;
 							//Dinberg:Instances - zoneSkinID for object positioning clientside.
 							targetZone = tz.ZoneSkinID;
 						}
@@ -821,7 +833,7 @@ namespace DOL.GS.PacketHandler
 				}
 
 				GameObject target = npc.TargetObject;
-				if (npc.AttackState && target != null && target.ObjectState == GameObject.eObjectState.Active && !npc.IsTurningDisabled)
+				if (!npc.IsMoving && target != null && target.ObjectState == GameObject.eObjectState.Active && !npc.IsTurningDisabled)
 					targetOID = (ushort) target.ObjectID;
 			}
 
@@ -829,20 +841,13 @@ namespace DOL.GS.PacketHandler
 			{
 				pak.WriteShort((ushort) speed);
 				
-				if (obj is GameNPC)
-				{
-					pak.WriteShort((ushort)(obj.Heading & 0xFFF));
-				}
-				else
-				{
-					pak.WriteShort(obj.Heading);
-				}
-				pak.WriteShort(xOffsetInZone);
-				pak.WriteShort(xOffsetInTargetZone);
-				pak.WriteShort(yOffsetInZone);
-				pak.WriteShort(yOffsetInTargetZone);
-				pak.WriteShort((ushort) obj.Z);
-				pak.WriteShort(zOffsetInTargetZone);
+				pak.WriteShort(obj.Orientation.InHeading);
+				pak.WriteShort((ushort)currentZoneCoord.X);
+				pak.WriteShort((ushort)targetZoneCoord.X);
+				pak.WriteShort((ushort)currentZoneCoord.Y);
+				pak.WriteShort((ushort)targetZoneCoord.Y);
+				pak.WriteShort((ushort)currentZoneCoord.Z);
+				pak.WriteShort((ushort)targetZoneCoord.Z);
 				pak.WriteShort((ushort) obj.ObjectID);
 				pak.WriteShort((ushort) targetOID);
 				//health
@@ -923,10 +928,10 @@ namespace DOL.GS.PacketHandler
 				if (obj is GameStaticItem)
 					pak.WriteShort((ushort) (obj as GameStaticItem).Emblem);
 				else pak.WriteShort(0);
-				pak.WriteShort(obj.Heading);
-				pak.WriteShort((ushort) obj.Z);
-				pak.WriteInt((uint) obj.X);
-				pak.WriteInt((uint) obj.Y);
+				pak.WriteShort(obj.Orientation.InHeading);
+				pak.WriteShort((ushort) obj.Position.Z);
+				pak.WriteInt((uint) obj.Position.X);
+				pak.WriteInt((uint) obj.Position.Y);
 				int flag = ((byte) obj.Realm & 3) << 4;
 				ushort model = obj.Model;
 				if (obj.IsUnderwater)
@@ -1045,17 +1050,17 @@ namespace DOL.GS.PacketHandler
 			{
 				int speed = 0;
 				ushort speedZ = 0;
-				if (npc.IsMoving && !npc.IsAtTargetPosition)
+				if (npc.IsMoving && !npc.IsAtTargetLocation)
 				{
 					speed = npc.CurrentSpeed;
-					speedZ = (ushort) npc.TickSpeedZ;
+					speedZ = (ushort)npc.ZSpeedFactor;
 				}
 				pak.WriteShort((ushort) npc.ObjectID);
 				pak.WriteShort((ushort) speed);
-				pak.WriteShort(npc.Heading);
-				pak.WriteShort((ushort) npc.Z);
-				pak.WriteInt((uint) npc.X);
-				pak.WriteInt((uint) npc.Y);
+				pak.WriteShort(npc.Orientation.InHeading);
+				pak.WriteShort((ushort) npc.Position.Z);
+				pak.WriteInt((uint) npc.Position.X);
+				pak.WriteInt((uint) npc.Position.Y);
 				pak.WriteShort(speedZ);
 				pak.WriteShort(npc.Model);
 				pak.WriteByte(npc.Size);
@@ -1355,7 +1360,7 @@ namespace DOL.GS.PacketHandler
 						}
 						pak.WriteByte(player.Level);
 						pak.WritePascalString(player.Name);
-						pak.WriteString(player.CharacterClass.Name, 4);
+						pak.WriteString(player.Salutation, 4);
 						//Dinberg:Instances - have to write zoneskinID, it uses this to display the text 'x is in y'.
 						if (player.CurrentZone != null)
 							pak.WriteByte((byte) player.CurrentZone.ZoneSkinID);
@@ -1422,25 +1427,489 @@ namespace DOL.GS.PacketHandler
 			}
 		}
 
-		public virtual void SendQuestOfferWindow(GameNPC questNPC, GamePlayer player, RewardQuest quest)
+        /// <summary>
+        /// New item data packet for 1.119
+        /// </summary>		
+        protected virtual void WriteItemData(GSTCPPacketOut pak, InventoryItem item)
+        {
+            if (item == null)
+            {
+                pak.Fill(0x00, 24); // +1 item.Effect changed to short
+                return;
+            }
+            pak.WriteShort((ushort)0); // item uniqueID
+            pak.WriteByte((byte)item.Level);
+
+            int value1; // some object types use this field to display count
+            int value2; // some object types use this field to display count
+            switch (item.Object_Type)
+            {
+                case (int)eObjectType.GenericItem:
+                    value1 = item.Count & 0xFF;
+                    value2 = (item.Count >> 8) & 0xFF;
+                    break;
+                case (int)eObjectType.Arrow:
+                case (int)eObjectType.Bolt:
+                case (int)eObjectType.Poison:
+                    value1 = item.Count;
+                    value2 = item.SPD_ABS;
+                    break;
+                case (int)eObjectType.Thrown:
+                    value1 = item.DPS_AF;
+                    value2 = item.Count;
+                    break;
+                case (int)eObjectType.Instrument:
+                    value1 = (item.DPS_AF == 2 ? 0 : item.DPS_AF);
+                    value2 = 0;
+                    break; // unused
+                case (int)eObjectType.Shield:
+                    value1 = item.Type_Damage;
+                    value2 = item.DPS_AF;
+                    break;
+                case (int)eObjectType.AlchemyTincture:
+                case (int)eObjectType.SpellcraftGem:
+                    value1 = 0;
+                    value2 = 0;
+                    /*
+					must contain the quality of gem for spell craft and think same for tincture
+					*/
+                    break;
+                case (int)eObjectType.HouseWallObject:
+                case (int)eObjectType.HouseFloorObject:
+                case (int)eObjectType.GardenObject:
+                    value1 = 0;
+                    value2 = item.SPD_ABS;
+                    /*
+					Value2 byte sets the width, only lower 4 bits 'seem' to be used (so 1-15 only)
+
+					The byte used for "Hand" (IE: Mini-delve showing a weapon as Left-Hand
+					usabe/TwoHanded), the lower 4 bits store the height (1-15 only)
+					*/
+                    break;
+
+                default:
+                    value1 = item.DPS_AF;
+                    value2 = item.SPD_ABS;
+                    break;
+            }
+            pak.WriteByte((byte)value1);
+            pak.WriteByte((byte)value2);
+
+            if (item.Object_Type == (int)eObjectType.GardenObject)
+                pak.WriteByte((byte)(item.DPS_AF));
+            else
+                pak.WriteByte((byte)(item.Hand << 6));
+
+            pak.WriteByte((byte)((item.Type_Damage > 3 ? 0 : item.Type_Damage << 6) | item.Object_Type));
+            pak.WriteByte(0x00); //unk 1.112
+            pak.WriteShort((ushort)item.Weight);
+            pak.WriteByte(item.ConditionPercent); // % of con
+            pak.WriteByte(item.DurabilityPercent); // % of dur
+            pak.WriteByte((byte)item.Quality); // % of qua
+            pak.WriteByte((byte)item.Bonus); // % bonus
+            pak.WriteByte((byte)item.BonusLevel); // 1.109
+            pak.WriteShort((ushort)item.Model);
+            pak.WriteByte((byte)item.Extension);
+            int flag = 0;
+            int emblem = item.Emblem;
+            int color = item.Color;
+            if (emblem != 0)
+            {
+                pak.WriteShort((ushort)emblem);
+                flag |= (emblem & 0x010000) >> 16; // = 1 for newGuildEmblem
+            }
+            else
+            {
+                pak.WriteShort((ushort)color);
+            }
+            //flag |= 0x01; // newGuildEmblem
+            // Enable craft button if the item can be modified and the player has alchemy or spellcrafting
+            eCraftingSkill skill = CraftingMgr.GetCraftingSkill(item);
+            switch (skill)
+            {
+                case eCraftingSkill.ArmorCrafting:
+                case eCraftingSkill.Fletching:
+                case eCraftingSkill.Tailoring:
+                case eCraftingSkill.WeaponCrafting:
+                    if (m_gameClient.Player.CraftingSkills.ContainsKey(eCraftingSkill.Alchemy)
+                        || m_gameClient.Player.CraftingSkills.ContainsKey(eCraftingSkill.SpellCrafting))
+                        flag |= 0x04; // enable craft button
+                    break;
+
+                default:
+                    break;
+            }
+
+            ushort icon1 = 0;
+            ushort icon2 = 0;
+            string spell_name1 = "";
+            string spell_name2 = "";
+            if (item.Object_Type != (int)eObjectType.AlchemyTincture)
+            {
+                if (item.SpellID > 0/* && item.Charges > 0*/)
+                {
+                    SpellLine chargeEffectsLine = SkillBase.GetSpellLine(GlobalSpellsLines.Item_Effects);
+                    if (chargeEffectsLine != null)
+                    {
+                        List<Spell> spells = SkillBase.GetSpellList(chargeEffectsLine.KeyName);
+                        foreach (Spell spl in spells)
+                        {
+                            if (spl.ID == item.SpellID)
+                            {
+                                flag |= 0x08;
+                                icon1 = spl.Icon;
+                                spell_name1 = spl.Name; // or best spl.Name ?
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (item.SpellID1 > 0/* && item.Charges > 0*/)
+                {
+                    SpellLine chargeEffectsLine = SkillBase.GetSpellLine(GlobalSpellsLines.Item_Effects);
+                    if (chargeEffectsLine != null)
+                    {
+                        List<Spell> spells = SkillBase.GetSpellList(chargeEffectsLine.KeyName);
+                        foreach (Spell spl in spells)
+                        {
+                            if (spl.ID == item.SpellID1)
+                            {
+                                flag |= 0x10;
+                                icon2 = spl.Icon;
+                                spell_name2 = spl.Name; // or best spl.Name ?
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            pak.WriteByte((byte)flag);
+            if ((flag & 0x08) == 0x08)
+            {
+                pak.WriteShort((ushort)icon1);
+                pak.WritePascalString(spell_name1);
+            }
+            if ((flag & 0x10) == 0x10)
+            {
+                pak.WriteShort((ushort)icon2);
+                pak.WritePascalString(spell_name2);
+            }
+            pak.WriteShort((ushort)item.Effect); // item effect changed to short
+            string name = item.Name;
+            if (item.Count > 1)
+                name = item.Count + " " + name;
+            if (item.SellPrice > 0)
+            {
+                if (ServerProperties.Properties.CONSIGNMENT_USE_BP)
+                    name += "[" + item.SellPrice.ToString() + " BP]";
+                else
+                    name += "[" + Money.GetString(item.SellPrice) + "]";
+            }
+            if (name == null) name = "";
+            if (name.Length > 55)
+                name = name.Substring(0, 55);
+            pak.WritePascalString(name);
+        }
+
+        protected virtual void SendQuestWindow(GameNPC questNPC, GamePlayer player, DQRewardQ quest, bool offer) // patch 0026
+        {
+            using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.Dialog)))
+            {
+                ushort QuestID = quest.ClientQuestID;
+                pak.WriteShort((offer) ? (byte)0x22 : (byte)0x21); // Dialog
+                pak.WriteShort(QuestID);
+                pak.WriteShort((ushort)questNPC.ObjectID);
+                pak.WriteByte(0x00); // unknown
+                pak.WriteByte(0x00); // unknown
+                pak.WriteByte(0x00); // unknown
+                pak.WriteByte(0x00); // unknown
+                pak.WriteByte((offer) ? (byte)0x02 : (byte)0x01); // Accept/Decline or Finish/Not Yet
+                pak.WriteByte(0x01); // Wrap
+                pak.WritePascalString(quest.Name);
+
+				String personalizedSummary = BehaviourUtils.GetPersonalizedMessage(quest.Description, player);
+                if (personalizedSummary.Length > 255)
+                {
+                    pak.WritePascalString(personalizedSummary.Substring(0, 255)); // Summary is max 255 bytes or client will crash !
+                }
+                else
+                {
+                    pak.WritePascalString(personalizedSummary);
+                }
+
+                if (offer)
+                {
+					String personalizedStory = BehaviourUtils.GetPersonalizedMessage(quest.Story, player);
+
+                    if (personalizedStory.Length > MAX_STORY_LENGTH)
+                    {
+                        pak.WriteShort(MAX_STORY_LENGTH);
+                        pak.WriteStringBytes(personalizedStory.Substring(0, MAX_STORY_LENGTH));
+                    }
+                    else
+                    {
+                        pak.WriteShort((ushort)personalizedStory.Length);
+                        pak.WriteStringBytes(personalizedStory);
+                    }
+                }
+                else
+                {
+                    if (quest.FinishText.Length > MAX_STORY_LENGTH)
+                    {
+                        pak.WriteShort(MAX_STORY_LENGTH);
+                        pak.WriteStringBytes(quest.FinishText.Substring(0, MAX_STORY_LENGTH));
+                    }
+                    else
+                    {
+                        pak.WriteShort((ushort)quest.FinishText.Length);
+                        pak.WriteStringBytes(quest.FinishText);
+                    }
+                }
+
+                pak.WriteShort(QuestID);
+                pak.WriteByte((byte)quest.Goals.Count); // #goals count
+                foreach (DQRQuestGoal goal in quest.Goals)
+                {
+                    pak.WritePascalString(String.Format("{0}\r", goal.Description));
+                }
+                pak.WriteInt((uint)(quest.RewardMoney));
+                pak.WriteByte((byte)quest.ExperiencePercent(player));
+                pak.WriteByte((byte)quest.FinalRewards.Count);
+                int rewardLoc = 0;
+                int optionalRewardLoc = 7;
+                foreach (ItemTemplate reward in quest.FinalRewards)
+                {
+                    WriteItemData(pak, GameInventoryItem.Create(reward), (quest.ID * 16 + rewardLoc));
+                    ++rewardLoc;
+                }
+                pak.WriteByte((byte)quest.NumOptionalRewardsChoice);
+                pak.WriteByte((byte)quest.OptionalRewards.Count);
+                foreach (ItemTemplate reward in quest.OptionalRewards)
+                {
+                    ++optionalRewardLoc;
+                    WriteItemData(pak, GameInventoryItem.Create(reward), (quest.ID * 16 + optionalRewardLoc));
+                }
+                SendTCP(pak);
+            }
+        }
+
+        /// <summary>
+        /// patch 0020
+        /// </summary>       
+        protected virtual void WriteItemData(GSTCPPacketOut pak, InventoryItem item, int questID)
+        {
+            if (item == null)
+            {
+                pak.Fill(0x00, 24); //item.Effect changed to short 1.119
+                return;
+            }
+
+            pak.WriteShort((ushort)questID); // need to send an objectID for reward quest delve to work 1.115+
+            pak.WriteByte((byte)item.Level);
+
+            int value1; // some object types use this field to display count
+            int value2; // some object types use this field to display count
+            switch (item.Object_Type)
+            {
+                case (int)eObjectType.GenericItem:
+                    value1 = item.Count & 0xFF;
+                    value2 = (item.Count >> 8) & 0xFF;
+                    break;
+                case (int)eObjectType.Arrow:
+                case (int)eObjectType.Bolt:
+                case (int)eObjectType.Poison:
+                    value1 = item.Count;
+                    value2 = item.SPD_ABS;
+                    break;
+                case (int)eObjectType.Thrown:
+                    value1 = item.DPS_AF;
+                    value2 = item.Count;
+                    break;
+                case (int)eObjectType.Instrument:
+                    value1 = (item.DPS_AF == 2 ? 0 : item.DPS_AF);
+                    value2 = 0;
+                    break; // unused
+                case (int)eObjectType.Shield:
+                    value1 = item.Type_Damage;
+                    value2 = item.DPS_AF;
+                    break;
+                case (int)eObjectType.AlchemyTincture:
+                case (int)eObjectType.SpellcraftGem:
+                    value1 = 0;
+                    value2 = 0;
+                    /*
+					must contain the quality of gem for spell craft and think same for tincture
+					*/
+                    break;
+                case (int)eObjectType.HouseWallObject:
+                case (int)eObjectType.HouseFloorObject:
+                case (int)eObjectType.GardenObject:
+                    value1 = 0;
+                    value2 = item.SPD_ABS;
+                    /*
+					Value2 byte sets the width, only lower 4 bits 'seem' to be used (so 1-15 only)
+
+					The byte used for "Hand" (IE: Mini-delve showing a weapon as Left-Hand
+					usabe/TwoHanded), the lower 4 bits store the height (1-15 only)
+					*/
+                    break;
+
+                default:
+                    value1 = item.DPS_AF;
+                    value2 = item.SPD_ABS;
+                    break;
+            }
+            pak.WriteByte((byte)value1);
+            pak.WriteByte((byte)value2);
+
+            if (item.Object_Type == (int)eObjectType.GardenObject)
+                pak.WriteByte((byte)(item.DPS_AF));
+            else
+                pak.WriteByte((byte)(item.Hand << 6));
+
+            pak.WriteByte((byte)((item.Type_Damage > 3 ? 0 : item.Type_Damage << 6) | item.Object_Type));
+            pak.WriteByte(0x00); //unk 1.112
+            pak.WriteShort((ushort)item.Weight);
+            pak.WriteByte(item.ConditionPercent); // % of con
+            pak.WriteByte(item.DurabilityPercent); // % of dur
+            pak.WriteByte((byte)item.Quality); // % of qua
+            pak.WriteByte((byte)item.Bonus); // % bonus
+            pak.WriteByte((byte)item.BonusLevel); // 1.109
+            pak.WriteShort((ushort)item.Model);
+            pak.WriteByte((byte)item.Extension);
+            int flag = 0;
+            int emblem = item.Emblem;
+            int color = item.Color;
+            if (emblem != 0)
+            {
+                pak.WriteShort((ushort)emblem);
+                flag |= (emblem & 0x010000) >> 16; // = 1 for newGuildEmblem
+            }
+            else
+            {
+                pak.WriteShort((ushort)color);
+            }
+            //flag |= 0x01; // newGuildEmblem
+            // Enable craft button if the item can be modified and the player has alchemy or spellcrafting
+            eCraftingSkill skill = CraftingMgr.GetCraftingSkill(item);
+            switch (skill)
+            {
+                case eCraftingSkill.ArmorCrafting:
+                case eCraftingSkill.Fletching:
+                case eCraftingSkill.Tailoring:
+                case eCraftingSkill.WeaponCrafting:
+                    if (m_gameClient.Player.CraftingSkills.ContainsKey(eCraftingSkill.Alchemy)
+                        || m_gameClient.Player.CraftingSkills.ContainsKey(eCraftingSkill.SpellCrafting))
+                        flag |= 0x04; // enable craft button
+                    break;
+
+                default:
+                    break;
+            }
+
+            ushort icon1 = 0;
+            ushort icon2 = 0;
+            string spell_name1 = "";
+            string spell_name2 = "";
+            if (item.Object_Type != (int)eObjectType.AlchemyTincture)
+            {
+                if (item.SpellID > 0/* && item.Charges > 0*/)
+                {
+                    SpellLine chargeEffectsLine = SkillBase.GetSpellLine(GlobalSpellsLines.Item_Effects);
+                    if (chargeEffectsLine != null)
+                    {
+                        List<Spell> spells = SkillBase.GetSpellList(chargeEffectsLine.KeyName);
+                        foreach (Spell spl in spells)
+                        {
+                            if (spl.ID == item.SpellID)
+                            {
+                                flag |= 0x08;
+                                icon1 = spl.Icon;
+                                spell_name1 = spl.Name; // or best spl.Name ?
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (item.SpellID1 > 0/* && item.Charges > 0*/)
+                {
+                    SpellLine chargeEffectsLine = SkillBase.GetSpellLine(GlobalSpellsLines.Item_Effects);
+                    if (chargeEffectsLine != null)
+                    {
+                        List<Spell> spells = SkillBase.GetSpellList(chargeEffectsLine.KeyName);
+                        foreach (Spell spl in spells)
+                        {
+                            if (spl.ID == item.SpellID1)
+                            {
+                                flag |= 0x10;
+                                icon2 = spl.Icon;
+                                spell_name2 = spl.Name; // or best spl.Name ?
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            pak.WriteByte((byte)flag);
+            if ((flag & 0x08) == 0x08)
+            {
+                pak.WriteShort((ushort)icon1);
+                pak.WritePascalString(spell_name1);
+            }
+            if ((flag & 0x10) == 0x10)
+            {
+                pak.WriteShort((ushort)icon2);
+                pak.WritePascalString(spell_name2);
+            }
+            pak.WriteShort((ushort)item.Effect); // changed to short 1.119
+            string name = item.Name;
+            if (item.Count > 1)
+                name = item.Count + " " + name;
+            if (item.SellPrice > 0)
+            {
+                if (ServerProperties.Properties.CONSIGNMENT_USE_BP)
+                    name += "[" + item.SellPrice.ToString() + " BP]";
+                else
+                    name += "[" + Money.GetString(item.SellPrice) + "]";
+            }
+            if (name == null) name = "";
+            if (name.Length > 55)
+                name = name.Substring(0, 55);
+            pak.WritePascalString(name);
+        }
+
+        public virtual void SendQuestOfferWindow(GameNPC questNPC, GamePlayer player, RewardQuest quest)
 		{
-		}
+            SendQuestWindow(questNPC, player, quest, true);
+        }
 
 		public virtual void SendQuestRewardWindow(GameNPC questNPC, GamePlayer player, RewardQuest quest)
 		{
-		}
-
+            SendQuestWindow(questNPC, player, quest, false);
+        }
 		public virtual void SendQuestOfferWindow(GameNPC questNPC, GamePlayer player, DataQuest quest)
 		{
-		}
+            SendQuestWindow(questNPC, player, quest, true);
+        }
 
 		public virtual void SendQuestRewardWindow(GameNPC questNPC, GamePlayer player, DataQuest quest)
 		{
-		}
+            SendQuestWindow(questNPC, player, quest, false);
+        }
+		
+		public virtual void SendQuestRewardWindow(GameNPC questNPC, GamePlayer player, DQRewardQ quest)
+        {
+            SendQuestWindow(questNPC, player, quest, false);
+        }
 
+        public virtual void SendQuestOfferWindow(GameNPC questNPC, GamePlayer player, DQRewardQ quest)
+        {
+            SendQuestWindow(questNPC, player, quest, true);
+        }
 		protected virtual void SendQuestWindow(GameNPC questNPC, GamePlayer player, RewardQuest quest, bool offer)
 		{
-		}
+            SendQuestWindow(questNPC, player, quest, offer);
+        }
 
 		protected virtual void SendQuestWindow(GameNPC questNPC, GamePlayer player, DataQuest quest, bool offer)
 		{
@@ -1689,7 +2158,7 @@ namespace DOL.GS.PacketHandler
 							pak.WriteByte(0);
 						}
 						pak.WritePascalString(updateLiving.Name);
-						pak.WritePascalString(updateLiving is GamePlayer ? ((GamePlayer) updateLiving).CharacterClass.Name : "NPC");
+						pak.WritePascalString(updateLiving is GamePlayer ? ((GamePlayer) updateLiving).Salutation : "NPC");
 						//classname
 					}
 				}
@@ -2068,7 +2537,7 @@ namespace DOL.GS.PacketHandler
 				// Write Speed
 				if (player.Steed != null && player.Steed.ObjectState == GameObject.eObjectState.Active)
 				{
-					player.Heading = player.Steed.Heading;
+					player.Orientation = player.Steed.Orientation;
 					pak.WriteShort(0x1800);
 				}
 				else
@@ -2113,12 +2582,11 @@ namespace DOL.GS.PacketHandler
 				}
 
 				// Get Off Corrd
-				int offX = player.X - player.CurrentZone.XOffset;
-				int offY = player.Y - player.CurrentZone.YOffset;
+                var zoneCoord = player.Coordinate - player.CurrentZone.Offset;
 
-				pak.WriteShort((ushort)player.Z);
-				pak.WriteShort((ushort)offX);
-				pak.WriteShort((ushort)offY);
+				pak.WriteShort((ushort)zoneCoord.Z);
+				pak.WriteShort((ushort)zoneCoord.X);
+				pak.WriteShort((ushort)zoneCoord.Y);
 				
 				// Write Zone
 				pak.WriteByte((byte)player.CurrentZone.ZoneSkinID);
@@ -2133,7 +2601,7 @@ namespace DOL.GS.PacketHandler
 				else
 				{
 					// Set Player always on ground, this is an "anti lag" packet
-					ushort contenthead = (ushort)(player.Heading + (true ? 0x1000 : 0));
+					ushort contenthead = (ushort)(player.Orientation.InHeading + (true ? 0x1000 : 0));
 					pak.WriteShort(contenthead);
 					// No Fall Speed.
 					pak.WriteShort(0);
@@ -2193,9 +2661,9 @@ namespace DOL.GS.PacketHandler
 				pak.WriteByte(player.GetDisplayLevel(m_gameClient.Player)); //level
 				pak.WritePascalString(player.Name); // player name
 				pak.WriteByte((byte) (player.MaxHealth >> 8)); // maxhealth high byte ?
-				pak.WritePascalString(player.CharacterClass.Name); // class name
+				pak.WritePascalString(player.Salutation); // class name
 				pak.WriteByte((byte) (player.MaxHealth & 0xFF)); // maxhealth low byte ?
-				pak.WritePascalString( /*"The "+*/player.CharacterClass.Profession); // Profession
+				pak.WritePascalString( /*"The "+*/player.CharacterClass.GetProfessionTitle(player)); // Profession
 				pak.WriteByte(0x00); //unk
                 pak.WritePascalString(player.CharacterClass.GetTitle(player, player.Level)); // player level
 
@@ -3092,16 +3560,21 @@ namespace DOL.GS.PacketHandler
 			}
 		}
 
-		public void SendChangeGroundTarget(Point3D newTarget)
-		{
-			using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.ChangeGroundTarget)))
-			{
-				pak.WriteInt((uint) (newTarget == null ? 0 : newTarget.X));
-				pak.WriteInt((uint) (newTarget == null ? 0 : newTarget.Y));
-				pak.WriteInt((uint) (newTarget == null ? 0 : newTarget.Z));
-				SendTCP(pak);
-			}
-		}
+        [Obsolete("Use .SendChangeGroundTarget(Coordinate) instead!")]
+        public void SendChangeGroundTarget(Point3D newTarget)
+            => SendChangeGroundTarget(newTarget.ToCoordinate());
+
+        public void SendChangeGroundTarget(Coordinate newTarget)
+        {
+            using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.ChangeGroundTarget)))
+            {
+                var gtLoc = newTarget == Coordinate.Nowhere ? Coordinate.Zero : newTarget;
+                pak.WriteInt((uint)(gtLoc.X));
+                pak.WriteInt((uint)(gtLoc.Y));
+                pak.WriteInt((uint)(gtLoc.Z));
+                SendTCP(pak);
+            }
+        }
 
 		public virtual void SendPetWindow(GameLiving pet, ePetWindowAction windowAction, eAggressionState aggroState,
 		                                  eWalkState walkState)
@@ -3220,10 +3693,10 @@ namespace DOL.GS.PacketHandler
 			using (GSTCPPacketOut pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.HouseCreate)))
 			{
 				pak.WriteShort((ushort) house.HouseNumber);
-				pak.WriteShort((ushort) house.Z);
-				pak.WriteInt((uint) house.X);
-				pak.WriteInt((uint) house.Y);
-				pak.WriteShort((ushort) house.Heading);
+				pak.WriteShort((ushort) house.Position.Z);
+				pak.WriteInt((uint) house.Position.X);
+				pak.WriteInt((uint) house.Position.Y);
+				pak.WriteShort((ushort) house.Orientation);
 				pak.WriteShort((ushort) house.PorchRoofColor);
 				pak.WriteShort((ushort) house.GetPorchAndGuildEmblemFlags());
 				pak.WriteShort((ushort) house.Emblem);
@@ -3256,9 +3729,9 @@ namespace DOL.GS.PacketHandler
 			using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.HouseCreate)))
 			{
 				pak.WriteShort((ushort) house.HouseNumber);
-				pak.WriteShort((ushort) house.Z);
-				pak.WriteInt((uint) house.X);
-				pak.WriteInt((uint) house.Y);
+				pak.WriteShort((ushort) house.Position.Z);
+				pak.WriteInt((uint) house.Position.X);
+				pak.WriteInt((uint) house.Position.Y);
 				pak.Fill(0x00, 15);
 				pak.WriteByte(0x03);
 				pak.WritePascalString("");
@@ -3347,9 +3820,9 @@ namespace DOL.GS.PacketHandler
 			{
 				pak.WriteShort((ushort) house.HouseNumber);
 				pak.WriteShort(25000); //constant!
-				pak.WriteInt((uint) house.X);
-				pak.WriteInt((uint) house.Y);
-				pak.WriteShort((ushort) house.Heading); //useless/ignored by client.
+				pak.WriteInt((uint) house.Position.X);
+				pak.WriteInt((uint) house.Position.Y);
+				pak.WriteShort((ushort) house.Orientation); //useless/ignored by client.
 				pak.WriteByte(0x00);
 				pak.WriteByte((byte) house.GetGuildEmblemFlags()); //emblem style
 				pak.WriteShort((ushort) house.Emblem); //emblem
@@ -3517,10 +3990,10 @@ namespace DOL.GS.PacketHandler
 			{
 				pak.WriteShort((ushort) obj.ObjectID);
 				pak.WriteShort(0);
-				pak.WriteShort(obj.Heading);
-				pak.WriteShort((ushort) obj.Z);
-				pak.WriteInt((uint) obj.X);
-				pak.WriteInt((uint) obj.Y);
+				pak.WriteShort(obj.Orientation.InHeading);
+				pak.WriteShort((ushort) obj.Position.Z);
+				pak.WriteInt((uint) obj.Position.X);
+				pak.WriteInt((uint) obj.Position.Y);
 				pak.WriteShort(obj.Model);
 				int flag = (obj.Type() | ((byte)obj.Realm == 3 ? 0x40 : (byte)obj.Realm << 4) | obj.GetDisplayLevel(m_gameClient.Player) << 9);
 				pak.WriteShort((ushort) flag); //(0x0002-for Ship,0x7D42-for catapult,0x9602,0x9612,0x9622-for ballista)
@@ -3619,21 +4092,10 @@ namespace DOL.GS.PacketHandler
 			using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.SiegeWeaponAnimation)))
 			{
 				pak.WriteInt((uint) siegeWeapon.ObjectID);
-				pak.WriteInt(
-					(uint)
-					(siegeWeapon.TargetObject == null
-					 ? (siegeWeapon.GroundTarget == null ? 0 : siegeWeapon.GroundTarget.X)
-					 : siegeWeapon.TargetObject.X));
-				pak.WriteInt(
-					(uint)
-					(siegeWeapon.TargetObject == null
-					 ? (siegeWeapon.GroundTarget == null ? 0 : siegeWeapon.GroundTarget.Y)
-					 : siegeWeapon.TargetObject.Y));
-				pak.WriteInt(
-					(uint)
-					(siegeWeapon.TargetObject == null
-					 ? (siegeWeapon.GroundTarget == null ? 0 : siegeWeapon.GroundTarget.Z)
-					 : siegeWeapon.TargetObject.Z));
+                var aimCoordinate = siegeWeapon.AimCoordinate;
+                pak.WriteInt((uint)aimCoordinate.X);
+                pak.WriteInt((uint)aimCoordinate.Y);
+                pak.WriteInt((uint)aimCoordinate.Z);
 				pak.WriteInt((uint) (siegeWeapon.TargetObject == null ? 0 : siegeWeapon.TargetObject.ObjectID));
 				pak.WriteShort(siegeWeapon.Effect);
 				pak.WriteShort((ushort) (siegeWeapon.SiegeWeaponTimer.TimeUntilElapsed/100));
@@ -3650,9 +4112,9 @@ namespace DOL.GS.PacketHandler
 			using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.SiegeWeaponAnimation)))
 			{
 				pak.WriteInt((uint) siegeWeapon.ObjectID);
-				pak.WriteInt((uint) (siegeWeapon.TargetObject == null ? 0 : siegeWeapon.TargetObject.X));
-				pak.WriteInt((uint) (siegeWeapon.TargetObject == null ? 0 : siegeWeapon.TargetObject.Y));
-				pak.WriteInt((uint) (siegeWeapon.TargetObject == null ? 0 : siegeWeapon.TargetObject.Z + 50));
+				pak.WriteInt((uint) (siegeWeapon.TargetObject == null ? 0 : siegeWeapon.TargetObject.Position.X));
+				pak.WriteInt((uint) (siegeWeapon.TargetObject == null ? 0 : siegeWeapon.TargetObject.Position.Y));
+				pak.WriteInt((uint) (siegeWeapon.TargetObject == null ? 0 : siegeWeapon.TargetObject.Position.Z + 50));
 				pak.WriteInt((uint) (siegeWeapon.TargetObject == null ? 0 : siegeWeapon.TargetObject.ObjectID));
 				pak.WriteShort(siegeWeapon.Effect);
 				pak.WriteShort((ushort) (timer/100));
@@ -3690,6 +4152,18 @@ namespace DOL.GS.PacketHandler
 					SendLivingEquipmentUpdate(living as GameNPC);
 			}
 		}
+
+        public virtual void SendSoundEffect(ushort soundId, Position pos, ushort radius)
+        {
+            var region = WorldMgr.GetRegion(pos.RegionID);
+            if(region == null) return;
+
+            var zone = region.GetZone(pos.Coordinate);
+            if(zone == null) return;
+
+            var zoneCoord = pos - zone.Offset;
+            SendSoundEffect(soundId, zone.ID, (ushort)zoneCoord.X, (ushort)zoneCoord.Y, (ushort)zoneCoord.Z, radius);
+        }
 
 		public virtual void SendSoundEffect(ushort soundId, ushort zoneId, ushort x, ushort y, ushort z, ushort radius)
 		{
@@ -3918,7 +4392,10 @@ namespace DOL.GS.PacketHandler
 		{
 		}
 
-		public virtual void SendMinotaurRelicMapUpdate(byte id, ushort region, int x, int y, int z)
+		public void SendMinotaurRelicMapUpdate(byte id, ushort region, int x, int y, int z)
+            => SendMinotaurRelicMapUpdate(id, Position.Create(region, x, y, z));
+
+        public virtual void SendMinotaurRelicMapUpdate(byte id, Position position)
 		{
 		}
 

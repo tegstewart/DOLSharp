@@ -16,7 +16,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  *
  */
-#if NET
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -136,8 +135,7 @@ namespace DOL.GS
                                 .Where(s => !string.IsNullOrEmpty(s))
                                 .Select(s => MetadataReference.CreateFromFile(s));
             var additionalReferences = new string[] { 
-                "System.Security.Cryptography.Algorithms", //for SHA256 in AutoXMLDatabaseUpdate
-                "System.Security.Cryptography.Primitives", //for SHA256 in AutoXMLDatabaseUpdate
+                "System.Security.Cryptography", //for SHA256 in AutoXMLDatabaseUpdate
                 "System.Net.Http"
             }.Union(GameServer.Instance.Configuration.AdditionalScriptAssemblies)
                 .Select(r => GetPortableExecutableReference(r));
@@ -161,4 +159,3 @@ namespace DOL.GS
         }
     }
 }
-#endif

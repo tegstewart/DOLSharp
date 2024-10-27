@@ -32,6 +32,7 @@ using DOL.Database;
 using DOL.Events;
 using DOL.GS.Behaviour;
 using DOL.GS.Behaviour.Attributes;
+using DOL.GS.Geometry;
 using DOL.GS.PacketHandler;
 using DOL.GS.Quests;
 using DOL.Language;
@@ -44,7 +45,7 @@ using log4net;
 	 * as Quest. To do this, we derive from the abstract class
 	 * BaseQuest	  	 
 	 */
-	public class thebirthdaygift : BaseQuest
+	public class TheBirthDayGift : BaseQuest
 	{
 		/// <summary>
 		/// Defines a logger for this class.
@@ -83,19 +84,19 @@ using log4net;
 		/* 
 		* Constructor
 		*/
-		public thebirthdaygift() : base()
+		public TheBirthDayGift() : base()
 		{
 		}
 
-		public thebirthdaygift(GamePlayer questingPlayer) : this(questingPlayer, 1)
+		public TheBirthDayGift(GamePlayer questingPlayer) : this(questingPlayer, 1)
 		{
 		}
 
-		public thebirthdaygift(GamePlayer questingPlayer, int step) : base(questingPlayer, step)
+		public TheBirthDayGift(GamePlayer questingPlayer, int step) : base(questingPlayer, step)
 		{
 		}
 
-		public thebirthdaygift(GamePlayer questingPlayer, DBQuest dbQuest) : base(questingPlayer, dbQuest)
+		public TheBirthDayGift(GamePlayer questingPlayer, DBQuest dbQuest) : base(questingPlayer, dbQuest)
 	{
 	}
 
@@ -123,15 +124,11 @@ using log4net;
 					log.Warn("Could not find " + BarkeepNognar.Name + ", creating ...");
 				BarkeepNognar.GuildName = "Part of " + questTitle + " Quest";
 				BarkeepNognar.Realm = eRealm.Midgard;
-				BarkeepNognar.CurrentRegionID = 100;
 				BarkeepNognar.Size = 58;
 				BarkeepNognar.Level = 15;
 				BarkeepNognar.MaxSpeedBase = 191;
 				BarkeepNognar.Faction = FactionMgr.GetFactionByID(0);
-				BarkeepNognar.X = 805429;
-				BarkeepNognar.Y = 726478;
-				BarkeepNognar.Z = 4717;
-				BarkeepNognar.Heading = 4073;
+                BarkeepNognar.Position = Position.Create(regionID: 100, x: 805429, y: 726478, z: 4717, heading: 4073);
 				BarkeepNognar.RespawnInterval = -1;
 				BarkeepNognar.BodyType = 0;
 
@@ -168,15 +165,11 @@ using log4net;
 					log.Warn("Could not find " + BarkeepPrugar.Name + ", creating ...");
 				BarkeepPrugar.GuildName = "Part of " + questTitle + " Quest";
 				BarkeepPrugar.Realm = eRealm.Midgard;
-				BarkeepPrugar.CurrentRegionID = 101;
 				BarkeepPrugar.Size = 60;
 				BarkeepPrugar.Level = 15;
 				BarkeepPrugar.MaxSpeedBase = 191;
 				BarkeepPrugar.Faction = FactionMgr.GetFactionByID(0);
-				BarkeepPrugar.X = 33230;
-				BarkeepPrugar.Y = 34802;
-				BarkeepPrugar.Z = 8027;
-				BarkeepPrugar.Heading = 1194;
+                BarkeepPrugar.Position = Position.Create(regionID: 101, x: 33230, y: 34802, z: 8027, heading: 1194);
 				BarkeepPrugar.RespawnInterval = -1;
 				BarkeepPrugar.BodyType = 0;
 
@@ -352,99 +345,99 @@ using log4net;
 		
 		#region defineQuestParts
 
-		QuestBuilder builder = QuestMgr.getBuilder(typeof(thebirthdaygift));
+		QuestBuilder builder = QuestMgr.getBuilder(typeof(TheBirthDayGift));
 			QuestBehaviour a;
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
 				a.AddTrigger(eTriggerType.Interact,null,BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),null,(eComparator)5);
+			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),BarkeepNognar);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),null,(eComparator)5);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk1"), BarkeepNognar);
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
             a.AddTrigger(eTriggerType.Whisper, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Whisper1"), BarkeepNognar);
 
-			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),null,(eComparator)5);
+			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),BarkeepNognar);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),null,(eComparator)5);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk2"), BarkeepNognar);
 
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
             a.AddTrigger(eTriggerType.Whisper, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Whisper2"), BarkeepNognar);
-            a.AddRequirement(eRequirementType.QuestGivable, typeof(DOL.GS.Quests.Midgard.thebirthdaygift), BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),null,(eComparator)5);
+            a.AddRequirement(eRequirementType.QuestGivable, typeof(DOL.GS.Quests.Midgard.TheBirthDayGift), BarkeepNognar);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),null,(eComparator)5);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk3"), BarkeepNognar);
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
             a.AddTrigger(eTriggerType.Whisper, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Whisper3"), BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),null,(eComparator)5);
+			a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),BarkeepNognar);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),null,(eComparator)5);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk4"), BarkeepNognar);
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
                 a.AddTrigger(eTriggerType.Whisper, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Whisper4"), BarkeepNognar);
-            a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),null,(eComparator)5);
+            a.AddRequirement(eRequirementType.QuestGivable,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),BarkeepNognar);
+			a.AddRequirement(eRequirementType.QuestPending,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),null,(eComparator)5);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk5"), BarkeepNognar);
-            a.AddAction(eActionType.OfferQuest, typeof(DOL.GS.Quests.Midgard.thebirthdaygift), LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.OfferQuest"));
+            a.AddAction(eActionType.OfferQuest, typeof(DOL.GS.Quests.Midgard.TheBirthDayGift), LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.OfferQuest"));
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
-				a.AddTrigger(eTriggerType.DeclineQuest,null,typeof(DOL.GS.Quests.Midgard.thebirthdaygift));
+				a.AddTrigger(eTriggerType.DeclineQuest,null,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift));
                 a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk6"), BarkeepNognar);
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
-				a.AddTrigger(eTriggerType.AcceptQuest,null,typeof(DOL.GS.Quests.Midgard.thebirthdaygift));
-			a.AddAction(eActionType.GiveQuest,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),BarkeepNognar);
+				a.AddTrigger(eTriggerType.AcceptQuest,null,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift));
+			a.AddAction(eActionType.GiveQuest,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),BarkeepNognar);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk7"), BarkeepNognar);
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
             a.AddTrigger(eTriggerType.Whisper, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Whisper5"), BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),1,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),1,(eComparator)3);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk8"), BarkeepNognar);
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
             a.AddTrigger(eTriggerType.EnemyKilled, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.EnemyKilled"), null);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),1,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),1,(eComparator)3);
 			a.AddAction(eActionType.GiveItem,rattlingskeletonpendant,null);
-			a.AddAction(eActionType.IncQuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),null);
+			a.AddAction(eActionType.IncQuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),null);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
 				a.AddTrigger(eTriggerType.Interact,null,BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),2,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),2,(eComparator)3);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk9"), BarkeepNognar);
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
 				a.AddTrigger(eTriggerType.GiveItem,BarkeepNognar,rattlingskeletonpendant);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),2,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),2,(eComparator)3);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk10"), BarkeepNognar);
             a.AddAction(eActionType.TakeItem, rattlingskeletonpendant, null);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepNognar,-1);
             a.AddTrigger(eTriggerType.Whisper, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Whisper6"), BarkeepNognar);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),2,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),2,(eComparator)3);
             a.AddRequirement(eRequirementType.InventoryItem, rattlingskeletonpendant, 0, (eComparator)3);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk11"), BarkeepNognar);
-            a.AddAction(eActionType.IncQuestStep, typeof(DOL.GS.Quests.Midgard.thebirthdaygift), null);
+            a.AddAction(eActionType.IncQuestStep, typeof(DOL.GS.Quests.Midgard.TheBirthDayGift), null);
 			a.AddAction(eActionType.GiveItem,giftandnoteforprugar,BarkeepNognar);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepPrugar,-1);
 				a.AddTrigger(eTriggerType.Interact,null,BarkeepPrugar);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),3,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),3,(eComparator)3);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk12"), BarkeepPrugar);
             AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepPrugar,-1);
 				a.AddTrigger(eTriggerType.GiveItem,BarkeepPrugar,giftandnoteforprugar);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),3,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),3,(eComparator)3);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk13"), BarkeepPrugar);
             a.AddAction(eActionType.TakeItem, giftandnoteforprugar, null);
 			AddBehaviour(a);
 			a = builder.CreateBehaviour(BarkeepPrugar,-1);
             a.AddTrigger(eTriggerType.Whisper, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Whisper7"), BarkeepPrugar);
-			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),3,(eComparator)3);
+			a.AddRequirement(eRequirementType.QuestStep,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),3,(eComparator)3);
             a.AddRequirement(eRequirementType.InventoryItem, giftandnoteforprugar, 0, (eComparator)3);
             a.AddAction(eActionType.Talk, LanguageMgr.GetTranslation(ServerProperties.Properties.SERV_LANGUAGE, "Mid.TheBirthdayGift.Talk14"), BarkeepPrugar);
             a.AddAction(eActionType.GiveXP, 20, null);
 			a.AddAction(eActionType.GiveGold,27,null);
-			a.AddAction(eActionType.FinishQuest,typeof(DOL.GS.Quests.Midgard.thebirthdaygift),null);
+			a.AddAction(eActionType.FinishQuest,typeof(DOL.GS.Quests.Midgard.TheBirthDayGift),null);
 			AddBehaviour(a);
 			
 			#endregion
@@ -453,7 +446,7 @@ using log4net;
 			
 			// Custom Scriptloaded Code End
 			if (BarkeepNognar!=null) {
-				BarkeepNognar.AddQuestToGive(typeof (thebirthdaygift));
+				BarkeepNognar.AddQuestToGive(typeof (TheBirthDayGift));
 			}
 			if (log.IsInfoEnabled)
 				log.Info("Quest \"" + questTitle + "\" initialized");
@@ -475,7 +468,7 @@ using log4net;
 			if (BarkeepNognar == null)
 				return;
 			/* Now we remove the possibility to give this quest to players */			
-			BarkeepNognar.RemoveQuestToGive(typeof (thebirthdaygift));
+			BarkeepNognar.RemoveQuestToGive(typeof (TheBirthDayGift));
 		}
 
 		/* Now we set the quest name.
@@ -523,7 +516,7 @@ using log4net;
 		public override bool CheckQuestQualification(GamePlayer player)
 		{		
 			// if the player is already doing the quest his level is no longer of relevance
-			if (player.IsDoingQuest(typeof (thebirthdaygift)) != null)
+			if (player.IsDoingQuest(typeof (TheBirthDayGift)) != null)
 				return true;
 				
 			// Custom Code Begin

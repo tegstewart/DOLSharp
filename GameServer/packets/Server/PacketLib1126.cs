@@ -17,6 +17,7 @@
  *
  */
 using DOL.Database;
+using DOL.GS.Geometry;
 using log4net;
 using System;
 using System.Collections.Generic;
@@ -181,7 +182,7 @@ namespace DOL.GS.PacketHandler
 					string locationDescription = string.Empty;
 					Region region = WorldMgr.GetRegion((ushort)c.Region);
 					if (region != null)
-						locationDescription = m_gameClient.GetTranslatedSpotDescription(region, c.Xpos, c.Ypos, c.Zpos);
+						locationDescription = GamePlayerUtils.GetTranslatedSpotDescription(region, m_gameClient, c.GetPosition().Coordinate);
 					string classname = "";
 					if (c.Class != 0)
 						classname = ((eCharacterClass)c.Class).ToString();
@@ -368,6 +369,32 @@ namespace DOL.GS.PacketHandler
 				SendTCP(pak);
 			}
 		}
+
+        public override void SendAddFriends(string[] friendNames)
+        {
+            using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.AddFriend)))
+            {
+                pak.WriteByte((byte)friendNames.Length);
+                foreach (string friend in friendNames)
+                {
+                    pak.WritePascalStringIntLE(friend);
+                }
+                SendTCP(pak);
+            }
+        }
+
+        public override void SendRemoveFriends(string[] friendNames)
+        {
+            using (var pak = new GSTCPPacketOut(GetPacketCode(eServerPackets.RemoveFriend)))
+            {
+                pak.WriteByte(0x00);
+                foreach (string friend in friendNames)
+                {
+                    pak.WritePascalStringIntLE(friend);
+                }
+                SendTCP(pak);
+            }
+        }
 	}
 }
 

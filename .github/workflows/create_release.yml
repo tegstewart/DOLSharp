@@ -14,67 +14,37 @@ jobs:
       version: ${{ steps.release_info.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Generate Release Info
         id: release_info
         run: |
-          version="1.9.7"
+          version="2.2"
           last_version_tag=$(git tag -l --sort=creatordate | grep -E '^([0-9]+\.){3}[0-9]+$' | tail -n1)
+          major_version=$(echo "$last_version_tag" | cut -d. -f1)
+          minor_version=$(echo "$last_version_tag" | cut -d. -f2)
+          patch_version=$(echo "$last_version_tag" | cut -d. -f3)
+          build_number=$(echo "$last_version_tag" | cut -d. -f4)
+          if [ "$major_version.$minor_version" != "$version" ];
+          then patch_version=0;
+          else patch_version=$((1+patch_version));
+          fi
+          new_version_tag="$version.$patch_version.$((1+build_number))"
+          echo $new_version_tag
+          echo "version=$new_version_tag" >> $GITHUB_OUTPUT
+
           git log origin/master --first-parent  --format="%s%n%w(0,4,4)%b" "$last_version_tag".. | grep -v "^$" >> patch_notes.txt
           if [ ! -s patch_notes.txt ]; then echo "No commits since last run."; exit 1; fi #fail if empty
           #Prepend patch notes with backticks
           sed -i '1s/^/```\n/' patch_notes.txt
-          new_build_number=$((1+$(echo "$last_version_tag" | grep -oE "[0-9]+$")))
-          new_version_tag="$version"."$new_build_number"
-          echo "version=$new_version_tag" >> $GITHUB_OUTPUT
       - name: Upload
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release_info
           path: |
             patch_notes.txt
-  
-  netframework_build:
-    name: Create Legacy Build
-    needs: get_release_info
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        build_target: [Release]
-    env:
-      OUTPUT_FILE_NAME: DOLServer_net45_${{ matrix.build_target }}.zip
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Build
-        run: |
-          export DOTNET_CLI_TELEMETRY_OPTOUT=1
-          assembly_version="${{ needs.get_release_info.outputs.version }}"
-          dotnet build --configuration "${{ matrix.build_target}}" -p:Version="$assembly_version" --verbosity normal "old\DOLold.sln"
-          cp -r $HOME/.nuget/packages/sqlitepclraw.lib.e_sqlite3/*/runtimes/win-* ./old/${{ matrix.build_target }}/lib/runtimes/
-          cp -r $HOME/.nuget/packages/sqlitepclraw.lib.e_sqlite3/*/runtimes/alpine-* ./old/${{ matrix.build_target }}/lib/runtimes/
-          cp -r $HOME/.nuget/packages/sqlitepclraw.lib.e_sqlite3/*/runtimes/osx-* ./old/${{ matrix.build_target }}/lib/runtimes/
-      - name: Test Build
-        run: |
-          dotnet test --verbosity normal --filter "DOL.UnitTests&TestCategory!=Explicit" ./old/build/Tests/${{ matrix.build_target }}/lib/Tests.dll
-          dotnet test --verbosity normal --filter "DOL.Integration&TestCategory!=Explicit" ./old/build/Tests/${{ matrix.build_target }}/lib/Tests.dll
-      - name: Add DOLConfig
-        run: |
-          dolconfig_location="$(dirname $(git remote get-url origin))/DOLConfig/releases/latest/download/DOLConfig_${{ matrix.build_target }}.zip"
-          wget "$dolconfig_location" -O DOLConfig.zip
-          unzip DOLConfig.zip -d old/"${{ matrix.build_target }}/DOLConfig"
-      - name: Compress Build Artifacts
-        run: |
-          (cd old/${{ matrix.build_target }}/ && zip -r ../../${{ env.OUTPUT_FILE_NAME }} * )
-      - name: Upload Build Output
-        uses: actions/upload-artifact@v3
-        with:
-          name: build_artifacts
-          path: |
-            ${{ env.OUTPUT_FILE_NAME }}
-            
+
   netcore_build:
     name: Create Build
     needs: get_release_info
@@ -86,49 +56,80 @@ jobs:
       OUTPUT_FILE_NAME: DOLServer_${{ matrix.build_target }}.zip
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '6.0.x'
+      - name: Setup MinGW-w64
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
       - name: Build
         run: |
           export DOTNET_CLI_TELEMETRY_OPTOUT=1 
           assembly_version="${{ needs.get_release_info.outputs.version }}"
           dotnet build --configuration "${{ matrix.build_target}}" -p:Version="$assembly_version" --verbosity normal "Dawn of Light.sln"
           echo "dotnet DOLServer.dll" > "${{ matrix.build_target }}/DOLServer.bat"
+      - name: Build DOL Detour (Linux x64)
+        run: |
+          mkdir Pathing/Detour/build
+          cd Pathing/Detour/build
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ ..
+          make
+          cp libdol_detour.so ../../../${{ matrix.build_target }}/
+      - name: Build DOL Detour (Windows x64)
+        run: |
+          mkdir Pathing/Detour/build_win64
+          cd Pathing/Detour/build_win64
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++-posix -DCMAKE_SHARED_LINKER_FLAGS="-static" ..
+          make
+          cp libdol_detour.dll ../../../${{ matrix.build_target }}/dol_detour.dll
       - name: Test Build
         run: |
-          dotnet test --verbosity normal --filter "DOL.UnitTests&TestCategory!=Explicit" ./build/Tests/${{ matrix.build_target }}/lib/Tests.dll
-          dotnet test --verbosity normal --filter "DOL.Integration&TestCategory!=Explicit" ./build/Tests/${{ matrix.build_target }}/lib/Tests.dll
+          dotnet test --verbosity normal --filter "DOL.UnitTests" ./build/Tests/${{ matrix.build_target }}/lib/Tests.dll
+          dotnet test --verbosity normal --filter "DOL.Integration" ./build/Tests/${{ matrix.build_target }}/lib/Tests.dll
       - name: Add DOLConfig
+        if: ${{ github.repository_owner == 'Dawn-of-Light' }}
         run: |
           dolconfig_location="$(dirname $(git remote get-url origin))/DOLConfig/releases/latest/download/DOLConfig_${{ matrix.build_target }}.zip"
           wget "$dolconfig_location" -O DOLConfig.zip
-          unzip DOLConfig.zip -d "${{ matrix.build_target }}/DOLConfig"
+          unzip DOLConfig.zip -d "${{ matrix.build_target }}/config"
+      - name: Cleanup
+        run: |
+          # Move everything except DOLServer files into lib folder
+          find "${{ matrix.build_target }}" -maxdepth 1 -type f ! -name 'DOLServer*' -exec mv "{}" "${{ matrix.build_target }}/lib/" \;
+          mv "${{ matrix.build_target }}/runtimes" "${{ matrix.build_target }}/lib"
+          sed -bi "s/\"runtimes/\"lib\/runtimes/" "${{ matrix.build_target }}/DOLServer.deps.json"
+          # Remove SQLite native binaries for alpine, 32-bit, mips, s390x, wasm, maccatalyst
+          rm -rf "${{ matrix.build_target }}/lib/runtimes/"alpine*
+          rm -rf "${{ matrix.build_target }}/lib/runtimes/"*{arm,x86,armel}
+          rm -rf "${{ matrix.build_target }}/lib/runtimes/"{linux-mips64,linux-s390x,browser-wasm}
+          rm -rf "${{ matrix.build_target }}/lib/runtimes/"maccatalyst*
+          # Replace alpine with linux-musl
+          sed -bi "s/\/alpine/\/linux-musl/" "${{ matrix.build_target }}/DOLServer.deps.json"
       - name: Compress Build Artifacts
         run: |
           (cd ${{ matrix.build_target }}/ && zip -r ../${{ env.OUTPUT_FILE_NAME }} * )
       - name: Upload Build Output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: build_artifacts
+          name: build_artifacts-${{ matrix.build_target }}
           path: ${{ env.OUTPUT_FILE_NAME }}
 
   create_release:
     name: Create Release
-    if: always() && needs.netcore_build.result == 'success'
-    needs: [get_release_info,netframework_build,netcore_build]
+    needs: [get_release_info,netcore_build]
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Create Release
         run: |
           set -x
           new_version_tag="${{ needs.get_release_info.outputs.version }}"
-          gh release create "$new_version_tag" --title "$new_version_tag" --notes-file release_info/patch_notes.txt build_artifacts/*
+          gh release create "$new_version_tag" --title "$new_version_tag" --notes-file release_info/patch_notes.txt build_artifacts-*/*
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

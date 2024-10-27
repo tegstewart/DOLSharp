@@ -4,7 +4,7 @@
   </PropertyGroup>
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -13,6 +13,7 @@
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
     <OutputPath>..\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>..\build\DOLServer\$(Configuration)\obj\</IntermediateOutputPath>
+    <UseAppHost>false</UseAppHost>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <SatelliteResourceLanguages>none</SatelliteResourceLanguages>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
@@ -44,13 +45,14 @@
     <RegisterForComInterop>False</RegisterForComInterop>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="7.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
     <PackageReference Include="log4net" Version="2.0.15" />
     <ProjectReference Include="..\GameServer\GameServer.csproj" Name="GameServer" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="DOLServer.exe.config" CopyToOutputDirectory="Always" />
     <Content Include="icon.ico" />
+    <Content Include="DOLServer.sh" CopyToOutputDirectory="always" />
+    <Content Include="DOLServer.bat" CopyToOutputDirectory="always" />
   </ItemGroup>
   <Target Name="CreateLibFolder" AfterTargets="Build">
     <MakeDir Directories="$(OutDir)lib" />

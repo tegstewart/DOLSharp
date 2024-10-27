@@ -1540,7 +1540,7 @@ namespace DOL.GS.Commands
 												{
 													ind++;
 													string zoneName = (ply.CurrentZone == null ? "(null)" : ply.CurrentZone.Description);
-													string mesg = ind + ") " + ply.Name + " <guild=" + guild.Name + "> the Level " + ply.Level + " " + ply.CharacterClass.Name + " in " + zoneName;
+													string mesg = ind + ") " + ply.Name + " <guild=" + guild.Name + "> the Level " + ply.Level + " " + ply.Salutation + " in " + zoneName;
 													client.Out.SendMessage(mesg, eChatType.CT_Guild, eChatLoc.CL_SystemWindow);
 												}
 											}
@@ -1568,9 +1568,9 @@ namespace DOL.GS.Commands
 									string zoneName = (ply.CurrentZone == null ? "(null)" : ply.CurrentZone.Description);
 									string mesg;
 									if (ply.GuildRank.Title != null)
-										mesg = ind.ToString() + ") " + ply.Name + " <" + ply.GuildRank.Title + "> the Level " + ply.Level.ToString() + " " + ply.CharacterClass.Name + " in " + zoneName;
+										mesg = ind.ToString() + ") " + ply.Name + " <" + ply.GuildRank.Title + "> the Level " + ply.Level.ToString() + " " + ply.Salutation + " in " + zoneName;
 									else
-										mesg = ind.ToString() + ") " + ply.Name + " <" + ply.GuildRank.RankLevel.ToString() + "> the Level " + ply.Level.ToString() + " " + ply.CharacterClass.Name + " in " + zoneName;
+										mesg = ind.ToString() + ") " + ply.Name + " <" + ply.GuildRank.RankLevel.ToString() + "> the Level " + ply.Level.ToString() + " " + ply.Salutation + " in " + zoneName;
 									if (ServerProperties.Properties.ALLOW_CHANGE_LANGUAGE)
 										mesg += " <" + ply.Client.Account.Language + ">";
 									if (ind >= startInd)
@@ -2097,7 +2097,7 @@ namespace DOL.GS.Commands
 								client.Out.SendMessage(LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Player.Guild.NotMember"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
 								return;
 							}
-							AbstractGameKeep keep = GameServer.KeepManager.GetKeepCloseToSpot(client.Player.CurrentRegionID, client.Player, WorldMgr.VISIBILITY_DISTANCE);
+							AbstractGameKeep keep = GameServer.KeepManager.GetKeepCloseToSpot(client.Player.Position, WorldMgr.VISIBILITY_DISTANCE);
 							if (keep == null)
 							{
 								client.Out.SendMessage(LanguageMgr.GetTranslation(client.Account.Language, "Scripts.Player.Guild.ClaimNotNear"), eChatType.CT_System, eChatLoc.CL_SystemWindow);
